@@ -14,8 +14,8 @@ export default function Home() {
                 },
                 body: JSON.stringify({
                     "stats": {
-                        "distance": "10.5 km",
-                        "time": "55:00"
+                        "weight": "15 kg",
+                        "reps": "12 reps",
                     }
                 }),
             });
