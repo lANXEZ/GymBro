@@ -1,2 +1,2 @@
-# GymBuddy
+# GymBro
 Software Engineering Project
