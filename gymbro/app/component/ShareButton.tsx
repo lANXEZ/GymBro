@@ -1,33 +1,19 @@
 'use client';
 import { Share2 } from "lucide-react";
 import { useState } from "react";
-const baseUrl = 'http://localhost:3000';
 import React from 'react'
+import { useAuth } from '../context/AuthContext';
+import { generateShareImage } from "../lib/apiClient";
 
 export default function ShareButton() {
     const [isLoading, setIsLoading] = useState(false);
+    const { token } = useAuth();
 
     const handleShare = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`${baseUrl}/api/generate-image`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    "stats": {
-                        "weight": "15 kg",
-                        "reps": "12 reps",
-                    }
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to generate image');
-            }
-
-            const blob = await response.blob();
+            if (!token) throw new Error("No token available");
+            const blob = await generateShareImage(token, "15 kg", "12 reps");
 
             await navigator.clipboard.write([
                 new ClipboardItem({ [blob.type]: blob })

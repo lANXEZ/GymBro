@@ -1,7 +1,18 @@
+'use client';
 import React from 'react';
 import { User, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = () => {
+    logout();
+    router.push('/');
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-2xl mx-auto">
       <header className="flex flex-col items-center justify-center text-center pb-8 border-b border-zinc-800">
@@ -24,7 +35,10 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        <button className="w-full flex items-center justify-center gap-2 p-4 mt-8 bg-zinc-900 border border-red-500/20 text-red-400 rounded-2xl hover:bg-red-500/10 transition-colors">
+        <button 
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 p-4 mt-8 bg-zinc-900 border border-red-500/20 text-red-400 rounded-2xl hover:bg-red-500/10 transition-colors"
+        >
           <LogOut size={18} />
           Sign Out
         </button>
