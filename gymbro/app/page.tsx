@@ -26,33 +26,17 @@ export default function Home() {
     setErrorMsg('');
     
     try {
-      // Simulate validation for the mock logic tests defined in UCD01 before API call
-      // MOCK TEST FALLBACK
-      const isSimulatedFailUser = username === 'unregistered' || email === 'unregistered@test.com';
-      const isSimulatedFailPass = password === 'wrong';
-
-      if (isSimulatedFailUser) throw new Error('username not registered');
-      if (isSimulatedFailPass) throw new Error('incorrect password');
-      
       const data = await loginApi(username || email, password);
       const token = data.auth_token;
+      const user = data.user;
 
-      if (!token) throw new Error('Invalid token received');
+      if (!token || !user) throw new Error('Invalid token or user received');
 
       // Success
-      login(token);
+      login(token, user);
       setAuthMode(null);
     } catch (err: any) {
-      // Fallback for mocked mode or graceful error
-      const errorStr = err.message || '';
-      if (errorStr.includes('fetch') || errorStr.includes('Failed to fetch') || errorStr.includes('Something went wrong')) {
-        // If the backend refuses connection but we passed the mock, let the user in with a dummy token
-        // to appease frontend test scenarios where backend is offline:
-        login("mock_token_123");
-        setAuthMode(null);
-      } else {
-        setErrorMsg(errorStr || 'Login failed');
-      }
+      setErrorMsg(err.message || 'Login failed');
     }
   };
 
@@ -66,9 +50,14 @@ export default function Home() {
       
       // Temporarily simulating a token for signup completion
       const mockToken = "mock_token_123";
-      
+      const mockUser = {
+        id: Math.floor(Math.random() * 1000),
+        username: username || email,
+        role: 'gymgoer' // Use gymgoer as a default for signups
+      };
+
       // Success
-      login(mockToken);
+      login(mockToken, mockUser);
       setAuthMode(null);
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed');
@@ -220,7 +209,8 @@ export default function Home() {
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
                       <input 
                         type="date" required value={birthdate} onChange={e => setBirthdate(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all [color-scheme:dark]"
+                        max={new Date().toISOString().split('T')[0]}
                       />
                     </div>
                   </div>
@@ -302,7 +292,7 @@ export default function Home() {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="font-bold text-lg text-white">Push Day (Chest, Shoulders, Triceps)</h3>
-                <p className="text-sm text-zinc-400">6 exercises � 60 mins</p>
+                <p className="text-sm text-zinc-400">6 exercises 60 mins</p>
               </div>
             </div>
             <ul className="space-y-3 mb-6">

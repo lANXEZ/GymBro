@@ -3,15 +3,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Dumbbell, Activity, Users, UserRound } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   const links = [
     { name: 'Home', href: '/', icon: Home },
     { name: 'Workouts', href: '/workouts', icon: Dumbbell },
     { name: 'Progress', href: '/progress', icon: Activity },
-    { name: 'Coach', href: '/coach', icon: Users },
+    ...(user?.role === 'trainer' ? [{ name: 'Coach', href: '/coach', icon: Users }] : []),
     { name: 'Profile', href: '/profile', icon: UserRound },
   ];
 

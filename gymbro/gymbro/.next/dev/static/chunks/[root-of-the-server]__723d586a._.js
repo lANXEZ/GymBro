@@ -17,6 +17,7 @@ var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.sign
 const AuthContext = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createContext"])({
     isLoggedIn: false,
     token: null,
+    user: null,
     login: ()=>{},
     logout: ()=>{}
 });
@@ -24,46 +25,59 @@ function AuthProvider({ children }) {
     _s();
     const [isLoggedIn, setIsLoggedIn] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [token, setToken] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [isMounted, setIsMounted] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AuthProvider.useEffect": ()=>{
             setIsMounted(true);
             const stored = localStorage.getItem('isLoggedIn');
             const storedToken = localStorage.getItem('auth_token');
-            if (stored === 'true' && storedToken) {
-                setIsLoggedIn(true);
-                setToken(storedToken);
+            const storedUser = localStorage.getItem('user');
+            if (stored === 'true' && storedToken && storedUser) {
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    setIsLoggedIn(true);
+                    setToken(storedToken);
+                    setUser(parsedUser);
+                } catch (e) {
+                    console.error("Failed to parse stored user", e);
+                }
             }
         }
     }["AuthProvider.useEffect"], []);
-    const login = (newToken)=>{
+    const login = (newToken, newUser)=>{
         setIsLoggedIn(true);
         setToken(newToken);
+        setUser(newUser);
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('auth_token', newToken);
+        localStorage.setItem('user', JSON.stringify(newUser));
     };
     const logout = ()=>{
         setIsLoggedIn(false);
         setToken(null);
+        setUser(null);
         localStorage.setItem('isLoggedIn', 'false');
         localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
     };
     if (!isMounted) return null;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(AuthContext.Provider, {
         value: {
             isLoggedIn,
             token,
+            user,
             login,
             logout
         },
         children: children
     }, void 0, false, {
         fileName: "[project]/app/context/AuthContext.tsx",
-        lineNumber: 50,
+        lineNumber: 72,
         columnNumber: 5
     }, this);
 }
-_s(AuthProvider, "vm7J5/U/Nw9Cc2GGsCE6myzgN2M=");
+_s(AuthProvider, "dIVtdbBkDc3IZJ3Ca2NwgHeKQb4=");
 _c = AuthProvider;
 function useAuth() {
     _s1();
@@ -91,15 +105,18 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$ne
     e.code = 'MODULE_NOT_FOUND';
     throw e;
 })();
+var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/context/AuthContext.tsx [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
 ;
+;
 function Navigation() {
     _s();
     const pathname = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["usePathname"])();
+    const { user } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"])();
     const links = [
         {
             name: 'Home',
@@ -116,11 +133,13 @@ function Navigation() {
             href: '/progress',
             icon: Activity
         },
-        {
-            name: 'Coach',
-            href: '/coach',
-            icon: Users
-        },
+        ...user?.role === 'trainer' ? [
+            {
+                name: 'Coach',
+                href: '/coach',
+                icon: Users
+            }
+        ] : [],
         {
             name: 'Profile',
             href: '/profile',
@@ -139,12 +158,12 @@ function Navigation() {
                             children: "GymBro"
                         }, void 0, false, {
                             fileName: "[project]/app/component/Navigation.tsx",
-                            lineNumber: 23,
+                            lineNumber: 25,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/component/Navigation.tsx",
-                        lineNumber: 22,
+                        lineNumber: 24,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -160,32 +179,32 @@ function Navigation() {
                                         size: 20
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/Navigation.tsx",
-                                        lineNumber: 37,
+                                        lineNumber: 39,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         children: link.name
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/Navigation.tsx",
-                                        lineNumber: 38,
+                                        lineNumber: 40,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, link.name, true, {
                                 fileName: "[project]/app/component/Navigation.tsx",
-                                lineNumber: 30,
+                                lineNumber: 32,
                                 columnNumber: 15
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/app/component/Navigation.tsx",
-                        lineNumber: 25,
+                        lineNumber: 27,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/Navigation.tsx",
-                lineNumber: 21,
+                lineNumber: 23,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -205,7 +224,7 @@ function Navigation() {
                                     size: 24
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/Navigation.tsx",
-                                    lineNumber: 59,
+                                    lineNumber: 61,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -213,32 +232,33 @@ function Navigation() {
                                     children: link.name
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/Navigation.tsx",
-                                    lineNumber: 60,
+                                    lineNumber: 62,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, link.name, true, {
                             fileName: "[project]/app/component/Navigation.tsx",
-                            lineNumber: 52,
+                            lineNumber: 54,
                             columnNumber: 15
                         }, this);
                     })
                 }, void 0, false, {
                     fileName: "[project]/app/component/Navigation.tsx",
-                    lineNumber: 47,
+                    lineNumber: 49,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/component/Navigation.tsx",
-                lineNumber: 46,
+                lineNumber: 48,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true);
 }
-_s(Navigation, "xbyQPtUVMO7MNj7WjJlpdWqRcTo=", false, function() {
+_s(Navigation, "ksVRUGqrhVGhRjk6vGyPsFYVFrs=", false, function() {
     return [
-        __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["usePathname"]
+        __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["usePathname"],
+        __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
 });
 _c = Navigation;

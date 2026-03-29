@@ -1,16 +1,23 @@
 'use client';
-import React from 'react';
-import { User, Settings, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Settings, LogOut, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
 
   const handleSignOut = () => {
     logout();
     router.push('/');
+  };
+
+  const getRoleDisplay = (role?: string) => {
+    if (role === 'trainer') return 'Coach Account';
+    if (role === 'training_client') return 'Training Client Account';
+    return 'Gym-goer Account';
   };
 
   return (
@@ -19,8 +26,8 @@ export default function ProfilePage() {
         <div className="w-24 h-24 bg-pink-600/20 text-pink-500 rounded-full flex items-center justify-center mb-4">
           <User size={48} />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Chuesing Ni</h1>
-        <p className="text-zinc-400">Gym-goer Account</p>
+        <h1 className="text-3xl font-bold text-white mb-2">{user?.username || 'User'}</h1>
+        <p className="text-zinc-400">{getRoleDisplay(user?.role)}</p>
       </header>
 
       <div className="space-y-4">
@@ -36,13 +43,52 @@ export default function ProfilePage() {
         </div>
 
         <button 
-          onClick={handleSignOut}
+          onClick={() => setIsSignOutModalOpen(true)}
           className="w-full flex items-center justify-center gap-2 p-4 mt-8 bg-zinc-900 border border-red-500/20 text-red-400 rounded-2xl hover:bg-red-500/10 transition-colors"
         >
           <LogOut size={18} />
           Sign Out
         </button>
       </div>
+
+      {/* Sign Out Confirmation Modal */}
+      {isSignOutModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setIsSignOutModalOpen(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <LogOut size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white">Sign Out</h3>
+              <p className="text-zinc-400 text-sm">
+                Are you sure you want to sign out? You will need to log in again to access your workouts.
+              </p>
+              
+              <div className="flex gap-3 pt-4">
+                <button 
+                  onClick={() => setIsSignOutModalOpen(false)}
+                  className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSignOut}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
