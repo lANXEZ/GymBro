@@ -68,16 +68,25 @@ export async function checkIsStruggling(token: string, workout_type: string) {
 /**
  * 5. Generate Image for Sharing
  */
-export async function generateShareImage(token: string, weight: string, reps: string) {
+export async function generateShareImage(token: string, PRID: string) {
   const res = await fetch(`${API_BASE_URL}/api/generate-image`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ stats: { weight, reps } }),
+    body: JSON.stringify({ PRID }),
   });
-  if (!res.ok) throw new Error('Failed to generate image');
+  if (!res.ok) {
+    let errorText = 'Unknown error';
+    try {
+      const errBody = await res.json();
+      errorText = errBody.error || JSON.stringify(errBody);
+    } catch (e) {
+      errorText = await res.text();
+    }
+    throw new Error(`Error ${res.status}: ${errorText}`);
+  }
   return res.blob();
 }
 

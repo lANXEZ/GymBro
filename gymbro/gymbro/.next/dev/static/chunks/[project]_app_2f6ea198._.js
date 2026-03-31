@@ -85,7 +85,7 @@ async function checkIsStruggling(token, workout_type) {
     if (!res.ok) throw new Error('Failed to check struggling status');
     return res.json(); // expected boolean or { isStruggling: boolean }
 }
-async function generateShareImage(token, weight, reps) {
+async function generateShareImage(token, PRID) {
     const res = await fetch(`${API_BASE_URL}/api/generate-image`, {
         method: 'POST',
         headers: {
@@ -93,10 +93,7 @@ async function generateShareImage(token, weight, reps) {
             'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            stats: {
-                weight,
-                reps
-            }
+            PRID
         })
     });
     if (!res.ok) throw new Error('Failed to generate image');
@@ -167,12 +164,18 @@ var _s = __turbopack_context__.k.signature();
 function ShareButton() {
     _s();
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [prid, setPrid] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const { token } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"])();
     const handleShare = async ()=>{
         setIsLoading(true);
         try {
             if (!token) throw new Error("No token available");
-            const blob = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["generateShareImage"])(token, "15 kg", "12 reps");
+            if (!prid) {
+                alert("Please enter a PRID");
+                setIsLoading(false);
+                return;
+            }
+            const blob = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["generateShareImage"])(token, prid);
             await navigator.clipboard.write([
                 new ClipboardItem({
                     [blob.type]: blob
@@ -186,27 +189,47 @@ function ShareButton() {
             setIsLoading(false);
         }
     };
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-        onClick: handleShare,
-        disabled: isLoading,
-        className: "flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-4 py-2.5 rounded-full font-medium transition-colors border border-zinc-700 disabled:opacity-50",
+    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+        className: "flex items-center gap-2",
         children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Share2, {
-                size: 18
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                type: "text",
+                placeholder: "PRID for testing...",
+                value: prid,
+                onChange: (e)=>setPrid(e.target.value),
+                className: "bg-zinc-800 text-zinc-100 px-3 py-2 rounded-md border border-zinc-700 outline-none"
             }, void 0, false, {
                 fileName: "[project]/app/component/ShareButton.tsx",
-                lineNumber: 38,
+                lineNumber: 40,
                 columnNumber: 13
             }, this),
-            isLoading ? 'Sharing...' : 'Share PR'
+            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                onClick: handleShare,
+                disabled: isLoading,
+                className: "flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 px-4 py-2.5 rounded-full font-medium transition-colors border border-zinc-700 disabled:opacity-50",
+                children: [
+                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Share2, {
+                        size: 18
+                    }, void 0, false, {
+                        fileName: "[project]/app/component/ShareButton.tsx",
+                        lineNumber: 52,
+                        columnNumber: 17
+                    }, this),
+                    isLoading ? 'Sharing...' : 'Share PR'
+                ]
+            }, void 0, true, {
+                fileName: "[project]/app/component/ShareButton.tsx",
+                lineNumber: 47,
+                columnNumber: 13
+            }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/component/ShareButton.tsx",
-        lineNumber: 33,
+        lineNumber: 39,
         columnNumber: 9
     }, this);
 }
-_s(ShareButton, "Hs+qMyH8eo8M7x9fR3ZXN1eFcRQ=", false, function() {
+_s(ShareButton, "qFlbfEFOU7rRfPBWhyt/KziCKs8=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
