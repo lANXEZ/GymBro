@@ -50,6 +50,21 @@ export async function fetchWorkout(token: string, workout_type: string, limit: n
 }
 
 /**
+ * 4. Fetch User Profile
+ */
+export async function fetchUserProfile(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch user profile');
+  return res.json();
+}
+
+
+/**
  * 4. Workout Struggling Detection
  */
 export async function checkIsStruggling(token: string, workout_type: string) {
@@ -107,6 +122,35 @@ export async function processPayment(token: string, amount: number, source_token
   if (!res.ok) throw new Error('Payment failed');
   return res.json();
 }
+
+/**
+ * 7. Fetch Recent Plan ID
+ */
+export async function fetchRecentPlanId(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/workout/recent-plan`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch recent plan id');
+  return res.json();
+}
+
+/**
+ * 8. Fetch Workout Plans
+ */
+export async function fetchWorkoutPlans(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/workout-plan`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) throw new Error('Failed to fetch workout plans');
+  return res.json();
+}
+
 
 /**
  * 7. Generate Performance graph image

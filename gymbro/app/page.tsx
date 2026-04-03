@@ -1,14 +1,16 @@
 "use client";
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Target, Flame, CalendarDays, ChevronRight, X, User as UserIcon, Lock, Mail, Calendar, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import ShareButton from './component/ShareButton';
+import WorkoutCoordinator from './component/WorkoutCoordinator';
 import { useAuth } from './context/AuthContext';
 
-import { loginApi } from './lib/apiClient';
+import { loginApi, fetchWorkout, fetchRecentPlanId, fetchWorkoutPlans } from './lib/apiClient';
 
 export default function Home() {
-  const { isLoggedIn, login } = useAuth();
+  const { isLoggedIn, login, token, user } = useAuth();
   const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null);
 
   // Form states
@@ -20,6 +22,129 @@ export default function Home() {
   const [birthdate, setBirthdate] = useState('');
   
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Dashboard states
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [totalWorkouts, setTotalWorkouts] = useState(0);
+  const [weeklyStreak, setWeeklyStreak] = useState(0);
+  const [isWorkoutCoordinatorOpen, setIsWorkoutCoordinatorOpen] = useState(false);
+
+
+  
+  // Today's Plan States
+  const [todaysPlanName, setTodaysPlanName] = useState<string | null>(null);
+  const [todaysExercises, setTodaysExercises] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isLoggedIn && token) {
+      // Fetch user's actual workouts (e.g. limit to 50 for volume calc, and show latest in feed)
+      fetchWorkout(token, '', 50)
+        .then((data) => {
+          if (Array.isArray(data)) {
+            // Calculate PRs dynamically (highest weight for that exercise type so far) to show the "New PR!" tag
+            const chronologicalData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            let calculatedPrCount = 0;
+            const maxWeights: Record<string, number> = {};
+
+            const processedData = chronologicalData.map(activity => {
+              const type = activity.workout_type;
+              const weight = Number(activity.weight) || 0;
+              let isPR = activity.pr || false; // default to true if backend provided it
+
+              if (type && weight > 0) {
+                if (maxWeights[type] === undefined) {
+                  maxWeights[type] = weight; // Baseline set, first one isn't counted as breaking a PR
+                } else if (weight > maxWeights[type]) {
+                  isPR = true;
+                  maxWeights[type] = weight;
+                  calculatedPrCount++;
+                }
+              }
+              return { ...activity, pr: isPR };
+            });
+
+            // Sort back to newest first for the feed
+            const newestFirstData = processedData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            setRecentActivities(newestFirstData);
+            setTotalWorkouts(newestFirstData.length);
+
+            // Calculate Weekly Streak
+            if (newestFirstData.length > 0) {
+              const sortedDates = newestFirstData
+                .map((d: any) => new Date(d.date))
+                .filter((d: Date) => !isNaN(d.getTime()))
+                .sort((a: Date, b: Date) => b.getTime() - a.getTime());
+
+              if (sortedDates.length > 0) {
+                // Normalize dates to the start of the week (Monday)
+                const normalizeWeek = (date: Date) => {
+                  const d = new Date(date);
+                  d.setHours(0, 0, 0, 0);
+                  const day = d.getDay();
+                  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+                  d.setDate(diff);
+                  return d.getTime();
+                };
+
+                const workoutWeeks = new Set(sortedDates.map((d: Date) => normalizeWeek(d)));
+                let checkTime = normalizeWeek(new Date()); // Start checking from current week
+
+                let currentStreak = 0;
+
+                // Handle case where user hasn't worked out THIS week yet, but has last week
+                if (!workoutWeeks.has(checkTime)) {
+                  checkTime -= 7 * 24 * 60 * 60 * 1000;
+                }
+
+                while (workoutWeeks.has(checkTime)) {
+                  currentStreak++;
+                  checkTime -= 7 * 24 * 60 * 60 * 1000;
+                }
+
+                setWeeklyStreak(currentStreak);
+              } else {
+                setWeeklyStreak(0);
+              }
+            }
+          }
+        })
+        .catch(err => console.error("Failed to load workouts:", err));
+
+      // Fetch Today's Plan
+      const fetchPlan = async () => {
+        try {
+          const recentPlanRes = await fetchRecentPlanId(token);
+          if (recentPlanRes && recentPlanRes.plan_id) {
+            const planId = recentPlanRes.plan_id;
+            const plans = await fetchWorkoutPlans(token);
+            
+            const currentPlan = plans.find((p: any) => p.plan_id === planId);
+            if (currentPlan) {
+              const d = new Date();
+              const dayOfWeek = d.getDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
+              // Map JS getDay to DB Day (0-6 mapping in DB schema is Mon-Sun)
+              const dbDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+              
+              const todaysDayData = currentPlan.days?.find((day: any) => day.day === dbDay);
+              
+              if (todaysDayData && todaysDayData.exercises.length > 0) {
+                setTodaysPlanName(currentPlan.plan_name);
+                setTodaysExercises(todaysDayData.exercises);
+              } else {
+                setTodaysPlanName(currentPlan.plan_name);
+                setTodaysExercises([]); // Maybe a rest day
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch today's plan:", error);
+        }
+      };
+      
+      fetchPlan();
+    }
+  }, [isLoggedIn, token]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,11 +373,14 @@ export default function Home() {
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {username ? username : 'Bro'}! 🦍</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {user?.username || 'Bro'}! 🦍</h1>
           <p className="text-zinc-400">Ready to crush your goals today?</p>
         </div>
         <div className="flex gap-3">
-          <button className="bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-full font-medium transition-colors shadow-lg shadow-pink-600/20">
+          <button 
+            onClick={() => setIsWorkoutCoordinatorOpen(true)}
+            className="bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-full font-medium transition-colors shadow-lg shadow-pink-600/20"
+          >
             Start Workout
           </button>
           <ShareButton />
@@ -260,12 +388,10 @@ export default function Home() {
       </header>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {[
-          { label: 'Workouts', value: '12', icon: Target, color: 'text-blue-500' },
-          { label: 'Streak', value: '4 days', icon: Flame, color: 'text-orange-500' },
-          { label: 'Volume', value: '8.5k kg', icon: Target, color: 'text-purple-500' },
-          { label: 'Time', value: '14 hrs', icon: CalendarDays, color: 'text-green-500' },
+          { label: 'Workouts', value: totalWorkouts.toString(), icon: Target, color: 'text-blue-500' },
+          { label: 'Streak', value: `${weeklyStreak} wks`, icon: Flame, color: 'text-orange-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col gap-3">
             <div className={`p-2 bg-zinc-800 rounded-lg w-fit ${stat.color}`}>
@@ -289,24 +415,40 @@ export default function Home() {
             </Link>
           </div>
           <div className="bg-zinc-800/50 rounded-2xl p-5 border border-zinc-700/50">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-lg text-white">Push Day (Chest, Shoulders, Triceps)</h3>
-                <p className="text-sm text-zinc-400">6 exercises 60 mins</p>
+            {todaysPlanName ? (
+              <>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-white">{todaysPlanName}</h3>
+                    <p className="text-sm text-zinc-400">
+                      {todaysExercises.length > 0 
+                        ? `${todaysExercises.length} exercises scheduled for today` 
+                        : 'Rest Day! Enjoy your recovery.'}
+                    </p>
+                  </div>
+                </div>
+                {todaysExercises.length > 0 && (
+                  <ul className="space-y-3 mb-6">
+                    {todaysExercises.map((ex, i) => (
+                      <li key={i} className="flex justify-between items-center text-sm">
+                        <span className="text-zinc-200">{ex.name}</span>
+                        {/* If DB doesn't have sets/reps in the plan, you can just show a placeholder */}
+                        <span className="text-zinc-500">Scheduled 🏋️</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-zinc-400 mb-4">No plan assigned for today or currently active.</p>
+                <Link href="/workouts">
+                  <button className="bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors">
+                    Find a Plan
+                  </button>
+                </Link>
               </div>
-            </div>
-            <ul className="space-y-3 mb-6">
-              {[
-                { name: 'Barbell Bench Press', sets: '4 sets x 8-10 reps' },
-                { name: 'Incline Dumbbell Press', sets: '3 sets x 10-12 reps' },
-                { name: 'Overhead Press', sets: '3 sets x 10-12 reps' },
-              ].map((ex, i) => (
-                <li key={i} className="flex justify-between items-center text-sm">
-                  <span className="text-zinc-200">{ex.name}</span>
-                  <span className="text-zinc-500">{ex.sets}</span>
-                </li>
-              ))}
-            </ul>
+            )}
           </div>
         </div>
 
@@ -319,19 +461,18 @@ export default function Home() {
             </Link>
           </div>
           <div className="space-y-4">
-            {[
-              { title: 'Leg Day', time: 'Yesterday', pr: true },
-              { title: 'Pull Day', time: '2 days ago', pr: false },
-              { title: 'Active Recovery', time: '4 days ago', pr: false },
-            ].map((activity, i) => (
+            {recentActivities.slice(0, 3).map((activity, i) => (
               <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-700 cursor-pointer">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-pink-500/10 text-pink-500 flex items-center justify-center">
                     <Target size={20} />
                   </div>
                   <div>
-                    <h4 className="font-medium text-white">{activity.title}</h4>
-                    <p className="text-xs text-zinc-400">{activity.time}</p>
+                    <h4 className="font-medium text-white">{activity.workout_type || 'Workout'}</h4>
+                    <p className="text-xs text-zinc-400">
+                      {activity.weight ? `${activity.weight} kg x ${activity.reps || 0} reps` : (activity.reps ? `${activity.reps} reps` : 'Completed')}
+                      {' • '} {activity.date ? new Date(activity.date).toLocaleDateString() : 'Recent'}
+                    </p>
                   </div>
                 </div>
                 {activity.pr && (
@@ -341,9 +482,17 @@ export default function Home() {
                 )}
               </div>
             ))}
+            {recentActivities.length === 0 && (
+              <p className="text-sm text-zinc-400 text-center py-4">No recent activity. Start crushing it!</p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Workout Coordinator */}
+      {isWorkoutCoordinatorOpen && (
+        <WorkoutCoordinator onClose={() => setIsWorkoutCoordinatorOpen(false)} />
+      )}
     </div>
   );
 }
