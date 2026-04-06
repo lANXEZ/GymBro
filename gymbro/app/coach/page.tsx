@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, UserPlus, FileText, Dumbbell, Loader2, Edit, ChevronDown, ChevronUp, X, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, UserPlus, UserMinus, FileText, Dumbbell, Loader2, Edit, Trash2, ChevronDown, ChevronUp, X, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { fetchClients, fetchWorkout, fetchUserProfile, fetchWorkoutPlans, fetchRecentPlanId, fetchBodyStatsHistory, inviteClient } from '../lib/apiClient';
+import { API_BASE_URL, fetchClients, fetchWorkout, fetchUserProfile, fetchWorkoutPlans, fetchRecentPlanId, fetchBodyStatsHistory, inviteClient, removeClient } from '../lib/apiClient';
 import { Suspense } from 'react';
 
 function CoachDashboardContent() {
@@ -56,6 +56,47 @@ function CoachDashboardContent() {
       setInviteError(err.message || 'Failed to add client. Check details and ensure they are upgraded.');
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const handleDeletePlan = async (id: string | number) => {
+    if (!token) return;
+
+    if (confirm("Are you sure you want to delete this plan?")) {
+      try {
+        await fetch(`${API_BASE_URL}/api/workout-plan/${id}`, {
+          method: 'DELETE',
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        setClientPlans(clientPlans.filter((p) => p.plan_id !== id && p.PlanID !== id));
+      } catch (error) {
+        console.error("Error deleting plan:", error);
+        alert("Failed to delete plan");
+      }
+    }
+  };
+
+  const handleRemoveClient = async () => {
+    if (!token || !selectedClient) return;
+    
+    if (confirm("Are you sure you want to remove this client from your training list?")) {
+      try {
+        const targetId = selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id;
+        await removeClient(token, targetId);
+        
+        // Remove from local list
+        setClients(clients.filter(c => {
+          const cId = c?.client_id || c?.user_id || c?.UserID || c?.id;
+          return cId !== targetId;
+        }));
+        
+        setSelectedClient(null);
+      } catch (error: any) {
+        console.error("Error removing client:", error);
+        alert(error.message || "Failed to remove client");
+      }
     }
   };
 
@@ -239,18 +280,27 @@ function CoachDashboardContent() {
                         </p>
                       ) : null}
                     </div>
-                    <button 
-                      onClick={() => {
-                        const targetId = selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id;
-                        if (targetId) {
-                          router.push(`/workouts/create?clientId=${targetId}`);
-                        }
-                      }}
-                      className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-medium transition-colors"
-                    >
-                      <Dumbbell size={18} />
-                      Create Plan
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={handleRemoveClient}
+                        className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 px-4 py-2 rounded-xl font-medium transition-colors"
+                      >
+                        <UserMinus size={18} />
+                        Remove Client
+                      </button>
+                      <button 
+                        onClick={() => {
+                          const targetId = selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id;
+                          if (targetId) {
+                            router.push(`/workouts/create?clientId=${targetId}`);
+                          }
+                        }}
+                        className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-medium transition-colors"
+                      >
+                        <Dumbbell size={18} />
+                        Create Plan
+                      </button>
+                    </div>
                   </div>
 
                   {/* BMI History Chart */}
@@ -396,9 +446,14 @@ function CoachDashboardContent() {
                                       </div>
                                       <div className="flex gap-1.5 items-center flex-wrap">
                                         {(p.provider_id === user?.id || p.ProviderID === user?.id) && (
-                                           <button onClick={(e) => { e.stopPropagation(); router.push(`/workouts/create?planId=${planIdKey}&clientId=${selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id}`); }} className="text-zinc-500 hover:text-blue-400 mr-1 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-md transition-colors">
-                                            <Edit size={12} />
-                                           </button>
+                                           <div className="flex items-center gap-1 mr-1">
+                                             <button onClick={(e) => { e.stopPropagation(); router.push(`/workouts/create?planId=${planIdKey}&clientId=${selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id}`); }} className="text-zinc-500 hover:text-blue-400 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-md transition-colors" title="Edit Plan">
+                                              <Edit size={12} />
+                                             </button>
+                                             <button onClick={(e) => { e.stopPropagation(); handleDeletePlan(planIdKey); }} className="text-zinc-500 hover:text-red-400 p-1 bg-zinc-100 dark:bg-zinc-800 rounded-md transition-colors" title="Delete Plan">
+                                              <Trash2 size={12} />
+                                             </button>
+                                           </div>
                                         )}
                                         {isRecent && (
                                           <span className="text-[9px] uppercase font-bold tracking-wider text-pink-400 bg-pink-500/20 px-1.5 py-0.5 rounded-md whitespace-nowrap">

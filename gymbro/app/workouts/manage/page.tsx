@@ -227,16 +227,22 @@ export default function ManageWorkoutsPage() {
       try {
         // Adjust endpoint if necessary
         const targetId = id;
-        await fetch(`${API_BASE_URL}/api/workout/exercise/${targetId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/workout/exercise/${targetId}`, {
           method: 'DELETE',
           headers: {
             "Authorization": `Bearer ${token}`
           }
         });
+        
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to delete exercise");
+        }
+
         setExercises(exercises.filter((e) => e.ex_move_id !== id && e.ExMoveID !== id));
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting exercise:", error);
-        alert("Failed to delete exercise");
+        alert(error.message || "Failed to delete exercise");
       }
     }
   };

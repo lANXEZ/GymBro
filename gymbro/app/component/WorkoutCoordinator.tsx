@@ -84,9 +84,9 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-bold text-white mb-4">Select a Workout Plan</h2>
       {plans.length === 0 && !loading && <p>No plans found.</p>}
-      {plans.map((plan: any) => (
+      {plans.map((plan: any, index: number) => (
         <button
-          key={plan.plan_id}
+          key={plan.id || plan.plan_id || index}
           onClick={() => {
             setSelectedPlan(plan);
             const d = new Date().getDay();
@@ -387,7 +387,7 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
           <button 
             onClick={() => {
               if (window.confirm("Are you sure you want to end your workout session?")) {
-                onClose();
+                window.location.reload();
               }
             }}
             className="w-full p-4 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-2xl font-bold transition-all border border-red-500/20"
@@ -595,8 +595,10 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
       const isTimeTypeLocal = details?.RecordType?.toLowerCase() === 'time';
       const payload = {
         workout_type: exercise.name,
+        ex_move_id: exercise.ex_move_id || exercise.ExMoveID,
         weight: isTimeTypeLocal ? null : weight,
         reps: isTimeTypeLocal ? null : reps,
+        date: new Date().toISOString(),
         time: isTimeTypeLocal ? time : null,
         UserWeight: bodyStats?.userWeight,
         UserHeight: bodyStats?.userHeight

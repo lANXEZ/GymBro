@@ -128,10 +128,15 @@ export default function WorkoutsPage() {
     fetchPlans();
   }, [token, user]);
 
-  const filteredPlans = plans.filter(p => 
-    p.plan_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.exercises.some(e => e.name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredPlans = plans.filter(p => {
+    const planName = p.plan_name || (p as any).PlanName || '';
+    const query = (searchQuery || '').toLowerCase();
+    return planName.toLowerCase().includes(query) ||
+      (p.exercises || []).some((e: any) => {
+        const exerciseName = e.name || e.Name || e.exercise_name || e.ExerciseName || '';
+        return exerciseName.toLowerCase().includes(query);
+      });
+  });
 
   const togglePlanExpand = (planId: number) => {
     setExpandedPlans(prev => ({ ...prev, [planId]: !prev[planId] }));
@@ -338,10 +343,10 @@ export default function WorkoutsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                 {[0, 1].map(colIndex => (
                   <div key={colIndex} className="flex flex-col gap-6">
-                    {filteredPlans.filter(p => p.type === 'P' || p.type === 'G').filter((_, i) => i % 2 === colIndex).map((plan) => {
+                    {filteredPlans.filter(p => p.type === 'P' || p.type === 'G').filter((_, i) => i % 2 === colIndex).map((plan, index) => {
                       const isGhosted = plan.type === 'G';
                       return (
-                      <div key={plan.plan_id} className={`bg-pink-900/20 border border-pink-500/30 rounded-3xl p-6 transition-colors relative overflow-hidden ${isGhosted ? 'opacity-50 grayscale cursor-not-allowed select-none' : 'hover:border-pink-500 cursor-pointer'}`}>
+                      <div key={plan.plan_id || index} className={`bg-pink-900/20 border border-pink-500/30 rounded-3xl p-6 transition-colors relative overflow-hidden ${isGhosted ? 'opacity-50 grayscale cursor-not-allowed select-none' : 'hover:border-pink-500 cursor-pointer'}`}>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/10 rounded-full blur-2xl -mr-16 -mt-16"></div>
                     <div className="flex items-start justify-between mb-4 relative z-10 gap-2">
                       <div className="w-12 h-12 rounded-xl bg-pink-500/20 text-pink-400 flex items-center justify-center shrink-0">
@@ -403,9 +408,9 @@ export default function WorkoutsPage() {
                                 {isToday && <span className="text-[10px] bg-pink-500 text-white px-2 py-0.5 rounded-full lowercase tracking-normal">today</span>}
                               </h4>
                               <div className="space-y-1">
-                                {dayExercises.map(ex => (
+                                {dayExercises.map((ex, idx) => (
                                   <div 
-                                    key={ex.ex_move_id} 
+                                    key={ex.ex_move_id || idx} 
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
                                       isToday 
@@ -442,8 +447,8 @@ export default function WorkoutsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                 {[0, 1, 2].map(colIndex => (
                   <div key={colIndex} className="flex flex-col gap-6">
-                    {filteredPlans.filter(p => p.type === 'C').filter((_, i) => i % 3 === colIndex).map((plan) => (
-                      <div key={plan.plan_id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 group hover:border-pink-500/50 transition-colors cursor-pointer flex flex-col justify-between">
+                    {filteredPlans.filter(p => p.type === 'C').filter((_, i) => i % 3 === colIndex).map((plan, index) => (
+                      <div key={plan.plan_id || index} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 group hover:border-pink-500/50 transition-colors cursor-pointer flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between mb-4">
                         <div className="w-12 h-12 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -500,9 +505,9 @@ export default function WorkoutsPage() {
                                 {isToday && <span className="text-[10px] bg-pink-500/20 text-pink-400 border border-pink-500/30 px-2 py-0.5 rounded-full lowercase tracking-normal">today</span>}
                               </h4>
                               <div className="space-y-1">
-                                {dayExercises.map(ex => (
+                                {dayExercises.map((ex, idx) => (
                                   <div 
-                                    key={ex.ex_move_id} 
+                                    key={ex.ex_move_id || idx} 
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
                                       isToday
@@ -536,8 +541,8 @@ export default function WorkoutsPage() {
             <div>
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4">Imported plan</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {filteredPlans.filter(p => p.type === 'S').map((plan) => (
-                  <div key={plan.plan_id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 group hover:border-blue-500/50 transition-colors cursor-pointer flex flex-col justify-between">
+                {filteredPlans.filter(p => p.type === 'S').map((plan, index) => (
+                  <div key={plan.plan_id || index} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 group hover:border-blue-500/50 transition-colors cursor-pointer flex flex-col justify-between">
                     <div>
                       <div className="flex items-start justify-between mb-4">
                         <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -592,9 +597,9 @@ export default function WorkoutsPage() {
                                 {isToday && <span className="text-[10px] bg-pink-500/20 text-pink-400 border border-pink-500/30 px-2 py-0.5 rounded-full lowercase tracking-normal">today</span>}
                               </h4>
                               <div className="space-y-1">
-                                {dayExercises.map(ex => (
+                                {dayExercises.map((ex, idx) => (
                                   <div 
-                                    key={ex.ex_move_id} 
+                                    key={ex.ex_move_id || idx} 
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
                                       isToday

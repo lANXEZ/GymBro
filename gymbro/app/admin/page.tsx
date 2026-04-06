@@ -106,7 +106,7 @@ export default function AdminDashboard() {
     String(u.UserID).includes(searchUser) ||
     String(u.Username).toLowerCase().includes(searchUser.toLowerCase()) || 
     String(u.FirstName).toLowerCase().includes(searchUser.toLowerCase())
-  );
+  ).sort((a, b) => a.UserID - b.UserID);
 
   const filteredExercises = exercises.filter(e =>
     String(e.ExMoveID).includes(searchExercise) ||

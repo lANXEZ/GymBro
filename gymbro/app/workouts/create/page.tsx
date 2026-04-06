@@ -282,7 +282,7 @@ function CreatePlanContent() {
         body: JSON.stringify({
           plan_name: planName,
           type: clientId ? "P" : "C", // P for Coach provided, C for Custom
-          user_id: clientId ? clientId : undefined,
+          user_id: clientId ? Number(clientId) : user?.id,
           days: daysArray
         })
       });

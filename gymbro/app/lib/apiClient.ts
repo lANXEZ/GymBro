@@ -262,6 +262,20 @@ export async function inviteClient(token: string, client_id: number, username: s
   return res.json();
 }
 
+export async function removeClient(token: string, client_id: number) {
+  const res = await fetch(`${API_BASE_URL}/api/coach/client/${client_id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(()=>({}));
+    throw new Error(errorData.error || 'Failed to remove client');
+  }
+  return res.json();
+}
+
 export async function unsubscribeApi(token: string) {
   const res = await fetch(`${API_BASE_URL}/api/user/unsubscribe`, {
     method: 'POST',
