@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3000/api/:path*', // Proxy to Backend
+        destination: process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:3000/api/:path*' 
+          : 'https://gb-backend-phi.vercel.app/api/:path*', // Proxy to Backend
       },
     ]
   }
