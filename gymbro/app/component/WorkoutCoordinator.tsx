@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../lib/apiClient';
 
-type WorkoutStep = 'SELECT_PLAN' | 'SELECT_DAY' | 'SELECT_EXERCISE' | 'ACTIVE_WORKOUT';
+type WorkoutStep = 'SELECT_PLAN' | 'SELECT_DAY' | 'RECORD_BODY_STATS' | 'SELECT_EXERCISE' | 'ACTIVE_WORKOUT';
 
 interface WorkoutCoordinatorProps {
   onClose: () => void;
@@ -17,6 +17,11 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
   // States for flow progression
   const [plans, setPlans] = useState<any[]>([]);
   const [completedExercises, setCompletedExercises] = useState<number[]>([]);
+  const [recentBodyStats, setRecentBodyStats] = useState<{ userWeight: number; userHeight: number } | null>(null);
+  const [bodyStats, setBodyStats] = useState<{ userWeight: number; userHeight: number } | null>(null);
+  
+  const [draftWeight, setDraftWeight] = useState<number | ''>('');
+  const [draftHeight, setDraftHeight] = useState<number | ''>('');
   
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -36,7 +41,13 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const plansData = plansRes.ok ? await plansRes.json() : [];
-        setPlans(plansData);
+        const activePlans = plansData.filter((p: any) => 
+          p.type !== 'G' && 
+          p.Type !== 'G' && 
+          p.plan_type !== 'G' && 
+          p.PlanType !== 'G'
+        );
+        setPlans(activePlans);
 
         // Fetch completed exercises for today
         const completedRes = await fetch(`${API_BASE_URL}/api/workout/today-completed`, {
@@ -44,6 +55,19 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
         });
         const completedData = completedRes.ok ? await completedRes.json() : [];
         setCompletedExercises(completedData);
+
+        // Fetch recent body stats
+        const bodyStatsRes = await fetch(`${API_BASE_URL}/api/workout/recent-body-stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const bodyStatsData = bodyStatsRes.ok ? await bodyStatsRes.json() : null;
+        if (bodyStatsData && bodyStatsData.UserWeight !== null) {
+          const rw = Number(bodyStatsData.UserWeight);
+          const rh = Number(bodyStatsData.UserHeight);
+          setRecentBodyStats({ userWeight: rw, userHeight: rh });
+          setDraftWeight(rw);
+          setDraftHeight(rh);
+        }
 
       } catch (error) {
         console.error('Failed to initialize workout data', error);
@@ -98,7 +122,13 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
         const confirmMsg = "You are going to continue with a workout outside today's routine. Do you want to continue?";
         if (!window.confirm(confirmMsg)) return;
       }
-      setStep('SELECT_EXERCISE');
+      
+      // If we haven't asked for daily body stats yet, ask now
+      if (!bodyStats) {
+        setStep('RECORD_BODY_STATS');
+      } else {
+        setStep('SELECT_EXERCISE');
+      }
     };
 
     return (
@@ -202,6 +232,78 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
   // Helper for rendering Select Day text
   const isToday = (current: number, today: number) => {
     return current === today ? <span className="text-pink-500 ml-1">(Today)</span> : null;
+  };
+
+  const renderRecordBodyStats = () => {
+    return (
+      <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+        <div>
+          <button 
+            onClick={() => setStep('SELECT_DAY')} 
+            className="text-sm font-medium text-pink-500 hover:text-pink-400 mb-4 flex items-center transition"
+          >
+            ← Back to Day Selection
+          </button>
+          <h2 className="text-2xl font-bold text-white mb-1">Daily Check-in</h2>
+          <p className="text-zinc-400 text-sm">
+            Log your body weight and height before starting.
+            {recentBodyStats && <span className="block mt-1 text-pink-400 font-medium">Values are auto-filled from your last session.</span>}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+            <label className="text-zinc-400 text-sm font-medium mb-3 block">
+              Body Weight
+              {recentBodyStats?.userWeight && (
+                <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold">
+                  Last: {recentBodyStats.userWeight} kg
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <input 
+                type="number" 
+                value={draftWeight} 
+                onChange={(e) => setDraftWeight(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">kg</span>
+            </div>
+          </div>
+          
+          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
+            <label className="text-zinc-400 text-sm font-medium mb-3 block">
+              Height
+              {recentBodyStats?.userHeight && (
+                <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold">
+                  Last: {recentBodyStats.userHeight} cm
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <input 
+                type="number" 
+                value={draftHeight} 
+                onChange={(e) => setDraftHeight(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">cm</span>
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => {
+            setBodyStats({ userWeight: Number(draftWeight), userHeight: Number(draftHeight) });
+            setStep('SELECT_EXERCISE');
+          }}
+          className="w-full p-4 rounded-2xl font-bold text-center transition-all bg-pink-600 text-white shadow-lg shadow-pink-600/20 hover:bg-pink-500 hover:-translate-y-1 block mt-4"
+        >
+          Confirm & Start Workout
+        </button>
+      </div>
+    );
   };
 
   const renderSelectExercise = () => {
@@ -308,6 +410,7 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
       <ActiveWorkoutView 
         exercise={selectedExercise} 
         token={token} 
+        bodyStats={bodyStats}
         onBack={() => setStep('SELECT_EXERCISE')}
         onFinish={() => handleFinishExercise(selectedExercise.ex_move_id)}
       />
@@ -329,6 +432,7 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
 
         {step === 'SELECT_PLAN' && renderSelectPlan()}
         {step === 'SELECT_DAY' && renderSelectDay()}
+        {step === 'RECORD_BODY_STATS' && renderRecordBodyStats()}
         {step === 'SELECT_EXERCISE' && renderSelectExercise()}
         {step === 'ACTIVE_WORKOUT' && renderActiveWorkout()}
         
@@ -342,6 +446,17 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
 // ------------------------------------------------------------------------------------
 
 const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, unit = '', lastValue = null }: any) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (containerRef.current) {
+      const selectedEl = containerRef.current.querySelector('[data-selected="true"]');
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+    }
+  }, [value]);
+
   const items = [];
   for (let i = min; i <= max; i = Math.round((i + step) * 100) / 100) {
     items.push(i);
@@ -357,13 +472,14 @@ const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, un
           </span>
         )}
       </div>
-      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-4 py-2 pb-6 -mx-4 no-scrollbar items-center">
+      <div ref={containerRef} className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-4 py-2 pb-6 -mx-4 no-scrollbar items-center">
         {items.map((item) => {
           const isSelected = value === item;
           const isLast = lastValue === item;
           return (
             <button
               key={item}
+              data-selected={isSelected}
               onClick={() => onChange(item)}
               className={`relative shrink-0 w-[72px] h-[72px] rounded-2xl flex flex-col items-center justify-center font-bold text-xl snap-center transition-all duration-200 ease-out ${
                 isSelected 
@@ -384,7 +500,7 @@ const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, un
   );
 };
 
-const ActiveWorkoutView = ({ exercise, token, onBack, onFinish }: any) => {
+const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any) => {
   const [details, setDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
@@ -476,11 +592,14 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish }: any) => {
     if (isSaving) return;
     setIsSaving(true);
     try {
+      const isTimeTypeLocal = details?.RecordType?.toLowerCase() === 'time';
       const payload = {
         workout_type: exercise.name,
-        weight: details?.RecordType === 'Time' ? null : weight,
-        reps: details?.RecordType === 'Time' ? null : reps,
-        time: details?.RecordType === 'Time' ? time : null,
+        weight: isTimeTypeLocal ? null : weight,
+        reps: isTimeTypeLocal ? null : reps,
+        time: isTimeTypeLocal ? time : null,
+        UserWeight: bodyStats?.userWeight,
+        UserHeight: bodyStats?.userHeight
       };
 
       await fetch(`${API_BASE_URL}/api/workout/save`, {
@@ -521,7 +640,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish }: any) => {
     return <div className="text-center py-20 text-pink-500 font-bold">Getting station ready...</div>;
   }
 
-  const isTimeType = details?.RecordType === 'Time';
+  const isTimeType = details?.RecordType?.toLowerCase() === 'time';
 
   return (
     <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 pb-10">

@@ -1,0 +1,246 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Users, UserPlus, FileText, Dumbbell, Loader2, Edit, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { fetchClients, fetchWorkout, fetchUserProfile, fetchWorkoutPlans, fetchRecentPlanId } from '../lib/apiClient';
+import { Suspense } from 'react';
+
+function CoachDashboardContent() {
+  const { token, user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const clientIdParam = searchParams.get('clientId');
+  
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Client specifics
+  const [clientProfile, setClientProfile] = useState<any>(null);
+  const [clientWorkouts, setClientWorkouts] = useState<any[]>([]);
+  const [clientPlans, setClientPlans] = useState<any[]>([]);
+  const [clientRecentPlanId, setClientRecentPlanId] = useState<number | string | null>(null);
+  const [clientLoading, setClientLoading] = useState(false);
+  const [viewingPlan, setViewingPlan] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (token) {
+      fetchClients(token).then((data) => {
+        setClients(data);
+        if (clientIdParam && data) {
+          const client = data.find((c: any) => String(c.client_id || c.user_id || c.UserID || c.id) === clientIdParam);
+          if (client) {
+            setSelectedClient(client);
+          }
+        }
+      }).catch((err) => {
+        console.error("Failed to fetch clients", err);
+      }).finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [token, clientIdParam]);
+
+  useEffect(() => {
+    if (token && selectedClient) {
+      const targetId = selectedClient.client_id || selectedClient.user_id || selectedClient.UserID || selectedClient.id;
+      setClientLoading(true);
+      Promise.all([
+        fetchUserProfile(token, targetId).catch(() => null),
+        fetchWorkout(token, '', 5, targetId).catch(() => []),
+        fetchWorkoutPlans(token, targetId).catch(() => []),
+        fetchRecentPlanId(token, targetId).catch(() => null)
+      ]).then(([profile, workouts, plans, recentPlan]) => {
+        setClientProfile(profile);
+        setClientWorkouts(Array.isArray(workouts) ? workouts : []);
+        
+        const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const mappedPlans = (Array.isArray(plans) ? plans : []).map((plan: any) => {
+          let flatExercises = plan.exercises || [];
+          if (plan.days && Array.isArray(plan.days)) {
+            flatExercises = [];
+            plan.days.forEach((d: any) => {
+              const dayName = typeof d.day === 'number' ? DAY_NAMES[d.day] : d.day_name || 'Uncategorized';
+              const dayExs = d.exercises || [];
+              dayExs.forEach((ex: any) => {
+                flatExercises.push({
+                  ...ex,
+                  day_of_week: dayName
+                });
+              });
+            });
+          }
+          return {
+            ...plan,
+            exercises: flatExercises
+          };
+        });
+        
+        setClientPlans(mappedPlans);
+        setClientRecentPlanId(recentPlan?.plan_id || null);
+      }).finally(() => {
+        setClientLoading(false);
+      });
+    } else {
+      setClientProfile(null);
+      setClientWorkouts([]);
+      setClientPlans([]);
+      setClientRecentPlanId(null);
+    }
+  }, [token, selectedClient]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Coach Dashboard</h1>
+          <p className="text-zinc-400">Manage your clients and their plans.</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-5 py-2.5 rounded-full font-medium transition-colors">
+            <UserPlus size={20} />
+            Invite Client
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Clients List */}
+        <div className="md:col-span-1 border-r border-zinc-800 pr-6 space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Users size={20} className="text-pink-500" />
+            My Clients
+          </h2>
+          <div className="space-y-2">
+            {loading ? (
+              <p className="text-zinc-500 text-sm">Loading clients...</p>
+            ) : clients.length === 0 ? (
+              <p className="text-zinc-500 text-sm">No clients assigned yet.</p>
+            ) : (
+              clients.map((client) => (
+                <div 
+                  key={client.client_id || client.user_id || client.UserID || client.id} 
+                  onClick={() => setSelectedClient(client)}
+                  className={`p-3 bg-zinc-900 border rounded-xl cursor-pointer transition-colors ${
+                    (selectedClient?.client_id && selectedClient.client_id === client.client_id) ||
+                    (selectedClient?.user_id && selectedClient.user_id === client.user_id) ||
+                    (selectedClient?.UserID && selectedClient.UserID === client.UserID) ||
+                    (selectedClient?.id && selectedClient.id === client.id)
+                      ? 'border-pink-500'
+                      : 'border-zinc-800 hover:border-pink-500/50'
+                  }`}
+                >
+                  <p className="font-semibold text-zinc-200">{client.FirstName} {client.LastName}</p>
+                  <p className={`text-xs ${client.Status === 'Active' ? 'text-green-500' : 'text-zinc-400'}`}>
+                    {client.Status || 'Training client'}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Client Viewer Placeholder */}
+        <div className="md:col-span-3">
+          {selectedClient ? (
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl min-h-[400px]">
+              {clientLoading ? (
+                <div className="flex items-center justify-center h-full text-zinc-400">Loading client data...</div>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold text-white mb-1">
+                        {clientProfile?.FirstName || selectedClient.FirstName} {clientProfile?.LastName || selectedClient.LastName}
+                      </h3>
+                      <p className="text-zinc-400">Username: @{clientProfile?.Username || selectedClient.Username}</p>
+                      {(clientProfile?.Weight || clientProfile?.Height) ? (
+                        <p className="text-zinc-500 mt-2 text-sm">
+                          {clientProfile.Height ? `Height: ${clientProfile.Height} cm ` : ''} 
+                          {clientProfile.Weight ? `Weight: ${clientProfile.Weight} kg` : ''}
+                        </p>
+                      ) : null}
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const targetId = selectedClient?.client_id || selectedClient?.user_id || selectedClient?.UserID || selectedClient?.id;
+                        if (targetId) {
+                          router.push(`/workouts/create?clientId=${targetId}`);
+                        }
+                      }}
+                      className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-medium transition-colors"
+                    >
+                      <Dumbbell size={18} />
+                      Create Plan
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-800">
+                      <p className="text-zinc-400 text-sm mb-1">Recent Activity</p>
+                      <div className="text-white font-medium mt-2">
+                        {clientWorkouts.length > 0 ? (
+                          <div className="space-y-3 mt-4">
+                            {clientWorkouts.map((w, i) => (
+                              <div key={i} className="flex justify-between items-center text-sm border-b border-zinc-700/50 pb-2 last:border-0">
+                                <div>
+                                  <p className="font-semibold">{w.workout_type || w.type}</p>
+                                  <p className="text-zinc-400 text-xs">{new Date(w.date || w.Date).toLocaleDateString()}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-pink-500 font-bold">{w.weight || w.Weight} kg</p>
+                                  <p className="text-zinc-400 text-xs">{w.reps || w.Reps} reps</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-zinc-500 text-sm">No recent workouts</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-800">
+                      <p className="text-zinc-400 text-sm mb-1">Current Plan</p>
+                      <div className="text-white font-medium mt-2">
+                        {clientPlans.length > 0 ? (
+                          <div className="space-y-2 mt-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-700">
+                              {[...clientPlans].reverse().map((p, i) => {
+                                const isRecent = p.plan_id === clientRecentPlanId || p.PlanID === clientRecentPlanId;
+                                const planIdKey = p.plan_id || p.PlanID;
+                                  /* replacement */  ;
+                              })}
+                          </div>
+                        ) : (
+                          <p className="text-zinc-500 text-sm">None assigned</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl min-h-[400px] flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mb-4 text-zinc-500">
+                <FileText size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-zinc-300 mb-2">Select a client</h3>
+              <p className="text-zinc-500 max-w-sm">
+                Click on a client from the list to view their progress, adjust their workout plans, or send feedback.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CoachDashboardPage() {
+  return (
+    <Suspense fallback={<div className="text-white text-center py-20 flex flex-col justify-center items-center"><Loader2 className="animate-spin text-pink-500 mb-4" size={32} />Loading...</div>}>
+      <CoachDashboardContent />
+    </Suspense>
+  );
+}

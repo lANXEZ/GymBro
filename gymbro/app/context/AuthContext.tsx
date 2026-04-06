@@ -6,6 +6,7 @@ type User = {
   username: string;
   role: string;
   trainer_id?: number;
+  [key: string]: any;
 };
 
 type AuthContextType = {

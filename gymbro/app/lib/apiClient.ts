@@ -1,4 +1,4 @@
-export const API_BASE_URL = '';
+﻿export const API_BASE_URL = '';
 
 /**
  * 1. Authentication
@@ -13,6 +13,32 @@ export async function loginApi(username: string, password: string) {
     if (res.status === 401) throw new Error('Unauthorized');
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Something went wrong. Please try again later.');
+  }
+  return res.json();
+}
+
+export async function registerApi(userData: any) {
+  const res = await fetch(`${API_BASE_URL}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Registration failed.');
+  }
+  return res.json();
+}
+
+export async function changePasswordApi(username: string, birthdate: string, new_password: string) {
+  const res = await fetch(`${API_BASE_URL}/api/user/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, birthdate, newPassword: new_password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to change password.');
   }
   return res.json();
 }
@@ -36,8 +62,9 @@ export async function saveWorkout(token: string, workout_type: string, weight: s
 /**
  * 3. Fetch Workout record from Database
  */
-export async function fetchWorkout(token: string, workout_type: string, limit: number) {
+export async function fetchWorkout(token: string, workout_type: string, limit: number, user_id?: number) {
   const params = new URLSearchParams({ workout_type, limit: limit.toString() });
+  if (user_id) params.append('user_id', user_id.toString());
   const res = await fetch(`${API_BASE_URL}/api/workout/fetch?${params}`, {
     method: 'GET',
     headers: {
@@ -52,8 +79,9 @@ export async function fetchWorkout(token: string, workout_type: string, limit: n
 /**
  * 4. Fetch User Profile
  */
-export async function fetchUserProfile(token: string) {
-  const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+export async function fetchUserProfile(token: string, user_id?: number) {
+  const url = user_id ? `${API_BASE_URL}/api/user/profile?user_id=${user_id}` : `${API_BASE_URL}/api/user/profile`;
+  const res = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -62,7 +90,6 @@ export async function fetchUserProfile(token: string) {
   if (!res.ok) throw new Error('Failed to fetch user profile');
   return res.json();
 }
-
 
 /**
  * 4. Workout Struggling Detection
@@ -77,7 +104,7 @@ export async function checkIsStruggling(token: string, workout_type: string) {
   });
   if (res.status === 400) throw new Error('Insufficient Data');
   if (!res.ok) throw new Error('Failed to check struggling status');
-  return res.json(); // expected boolean or { isStruggling: boolean }
+  return res.json();
 }
 
 /**
@@ -91,6 +118,28 @@ export async function generateShareImage(token: string, PRID: string) {
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({ PRID }),
+  });
+  if (!res.ok) {
+    let errorText = 'Unknown error';
+    try {
+      const errBody = await res.json();
+      errorText = errBody.error || JSON.stringify(errBody);
+    } catch (e) {
+      errorText = await res.text();
+    }
+    throw new Error(`Error ${res.status}: ${errorText}`);
+  }
+  return res.blob();
+}
+
+export async function generatePlanShareImage(token: string, plan_id: number) {
+  const res = await fetch(`${API_BASE_URL}/api/generate-plan-image`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ plan_id })
   });
   if (!res.ok) {
     let errorText = 'Unknown error';
@@ -126,8 +175,9 @@ export async function processPayment(token: string, amount: number, source_token
 /**
  * 7. Fetch Recent Plan ID
  */
-export async function fetchRecentPlanId(token: string) {
-  const res = await fetch(`${API_BASE_URL}/api/workout/recent-plan`, {
+export async function fetchRecentPlanId(token: string, user_id?: number) {
+  const url = user_id ? `${API_BASE_URL}/api/workout/recent-plan?user_id=${user_id}` : `${API_BASE_URL}/api/workout/recent-plan`;
+  const res = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -140,8 +190,9 @@ export async function fetchRecentPlanId(token: string) {
 /**
  * 8. Fetch Workout Plans
  */
-export async function fetchWorkoutPlans(token: string) {
-  const res = await fetch(`${API_BASE_URL}/api/workout-plan`, {
+export async function fetchWorkoutPlans(token: string, user_id?: number) {
+  const url = user_id ? `${API_BASE_URL}/api/workout-plan?user_id=${user_id}` : `${API_BASE_URL}/api/workout-plan`;
+  const res = await fetch(url, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -150,7 +201,6 @@ export async function fetchWorkoutPlans(token: string) {
   if (!res.ok) throw new Error('Failed to fetch workout plans');
   return res.json();
 }
-
 
 /**
  * 7. Generate Performance graph image
@@ -169,3 +219,113 @@ export async function fetchPerformanceGraph(token: string, workout_type: string,
   if (!res.ok) throw new Error('Failed to fetch performance graph');
   return res.blob();
 }
+
+export async function fetchBodyStatsHistory(token: string, user_id?: number) {
+  const url = user_id ? `${API_BASE_URL}/api/workout/body-stats-history?user_id=${user_id}` : `${API_BASE_URL}/api/workout/body-stats-history`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Failed to fetch body stats history');
+  return res.json();
+}
+
+export async function fetchClients(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/coach/clients`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) {
+    if (res.status === 404 || res.status === 403) return [];
+    throw new Error('Failed to fetch clients');
+  }
+  return res.json();
+}
+
+export async function inviteClient(token: string, client_id: number, username: string) {
+  const res = await fetch(`${API_BASE_URL}/api/coach/invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ client_id, username })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(()=>({}));
+    throw new Error(errorData.error || 'Failed to invite client');
+  }
+  return res.json();
+}
+
+export async function unsubscribeApi(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/user/unsubscribe`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.error || 'Failed to unsubscribe');
+  }
+  return res.json();
+}
+
+export async function upgradeSubscription(token: string) {
+  const res = await fetch(`${API_BASE_URL}/api/user/upgrade`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Upgrade failed');
+  return res.json();
+}
+
+// Admin Endpoints
+export const fetchAllUsers = async (token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/admin/users`, { headers: { Authorization: `Bearer ${token}` }});
+  if (!res.ok) throw new Error('Failed to fetch users');
+  return res.json();
+};
+
+export const updateUserRoleApi = async (token: string, userId: number, status: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/admin/user/${userId}/role`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ status })
+  });
+  if (!res.ok) throw new Error('Failed to update role');
+  return res.json();
+};
+
+export const fetchAllPublicExercisesApi = async (token: string) => {
+  const res = await fetch(`${API_BASE_URL}/api/admin/exercises`, { headers: { Authorization: `Bearer ${token}` }});
+  if (!res.ok) throw new Error('Failed to fetch public exercises');
+  return res.json();
+};
+
+export const updateAdminExerciseApi = async (token: string, id: number, exerciseData: any) => {
+  const res = await fetch(`${API_BASE_URL}/api/admin/exercise/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(exerciseData)
+  });
+  if (!res.ok) throw new Error('Failed to update exercise');
+  return res.json();
+};
+
+export const deleteAdminExerciseApi = async (token: string, id: number) => {
+  const res = await fetch(`${API_BASE_URL}/api/admin/exercise/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) throw new Error('Failed to delete exercise');
+  return res.json();
+};

@@ -5,8 +5,20 @@
 __turbopack_context__.s([
     "API_BASE_URL",
     ()=>API_BASE_URL,
+    "changePasswordApi",
+    ()=>changePasswordApi,
     "checkIsStruggling",
     ()=>checkIsStruggling,
+    "deleteAdminExerciseApi",
+    ()=>deleteAdminExerciseApi,
+    "fetchAllPublicExercisesApi",
+    ()=>fetchAllPublicExercisesApi,
+    "fetchAllUsers",
+    ()=>fetchAllUsers,
+    "fetchBodyStatsHistory",
+    ()=>fetchBodyStatsHistory,
+    "fetchClients",
+    ()=>fetchClients,
     "fetchPerformanceGraph",
     ()=>fetchPerformanceGraph,
     "fetchRecentPlanId",
@@ -17,14 +29,28 @@ __turbopack_context__.s([
     ()=>fetchWorkout,
     "fetchWorkoutPlans",
     ()=>fetchWorkoutPlans,
+    "generatePlanShareImage",
+    ()=>generatePlanShareImage,
     "generateShareImage",
     ()=>generateShareImage,
+    "inviteClient",
+    ()=>inviteClient,
     "loginApi",
     ()=>loginApi,
     "processPayment",
     ()=>processPayment,
+    "registerApi",
+    ()=>registerApi,
     "saveWorkout",
-    ()=>saveWorkout
+    ()=>saveWorkout,
+    "unsubscribeApi",
+    ()=>unsubscribeApi,
+    "updateAdminExerciseApi",
+    ()=>updateAdminExerciseApi,
+    "updateUserRoleApi",
+    ()=>updateUserRoleApi,
+    "upgradeSubscription",
+    ()=>upgradeSubscription
 ]);
 const API_BASE_URL = '';
 async function loginApi(username, password) {
@@ -45,6 +71,38 @@ async function loginApi(username, password) {
     }
     return res.json();
 }
+async function registerApi(userData) {
+    const res = await fetch(`${API_BASE_URL}/api/register`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Registration failed.');
+    }
+    return res.json();
+}
+async function changePasswordApi(username, birthdate, new_password) {
+    const res = await fetch(`${API_BASE_URL}/api/change-password`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            username,
+            birthdate,
+            new_password
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to change password.');
+    }
+    return res.json();
+}
 async function saveWorkout(token, workout_type, weight, reps, date) {
     const res = await fetch(`${API_BASE_URL}/api/workout/save`, {
         method: 'POST',
@@ -62,11 +120,12 @@ async function saveWorkout(token, workout_type, weight, reps, date) {
     if (!res.ok) throw new Error('Failed to save workout');
     return res.json();
 }
-async function fetchWorkout(token, workout_type, limit) {
+async function fetchWorkout(token, workout_type, limit, user_id) {
     const params = new URLSearchParams({
         workout_type,
         limit: limit.toString()
     });
+    if (user_id) params.append('user_id', user_id.toString());
     const res = await fetch(`${API_BASE_URL}/api/workout/fetch?${params}`, {
         method: 'GET',
         headers: {
@@ -77,8 +136,9 @@ async function fetchWorkout(token, workout_type, limit) {
     if (!res.ok) throw new Error('Failed to fetch workout');
     return res.json();
 }
-async function fetchUserProfile(token) {
-    const res = await fetch(`${API_BASE_URL}/api/user/profile`, {
+async function fetchUserProfile(token, user_id) {
+    const url = user_id ? `${API_BASE_URL}/api/user/profile?user_id=${user_id}` : `${API_BASE_URL}/api/user/profile`;
+    const res = await fetch(url, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -99,7 +159,7 @@ async function checkIsStruggling(token, workout_type) {
     });
     if (res.status === 400) throw new Error('Insufficient Data');
     if (!res.ok) throw new Error('Failed to check struggling status');
-    return res.json(); // expected boolean or { isStruggling: boolean }
+    return res.json();
 }
 async function generateShareImage(token, PRID) {
     const res = await fetch(`${API_BASE_URL}/api/generate-image`, {
@@ -110,6 +170,29 @@ async function generateShareImage(token, PRID) {
         },
         body: JSON.stringify({
             PRID
+        })
+    });
+    if (!res.ok) {
+        let errorText = 'Unknown error';
+        try {
+            const errBody = await res.json();
+            errorText = errBody.error || JSON.stringify(errBody);
+        } catch (e) {
+            errorText = await res.text();
+        }
+        throw new Error(`Error ${res.status}: ${errorText}`);
+    }
+    return res.blob();
+}
+async function generatePlanShareImage(token, plan_id) {
+    const res = await fetch(`${API_BASE_URL}/api/generate-plan-image`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            plan_id
         })
     });
     if (!res.ok) {
@@ -142,8 +225,9 @@ async function processPayment(token, amount, source_token, currency = 'THB') {
     if (!res.ok) throw new Error('Payment failed');
     return res.json();
 }
-async function fetchRecentPlanId(token) {
-    const res = await fetch(`${API_BASE_URL}/api/workout/recent-plan`, {
+async function fetchRecentPlanId(token, user_id) {
+    const url = user_id ? `${API_BASE_URL}/api/workout/recent-plan?user_id=${user_id}` : `${API_BASE_URL}/api/workout/recent-plan`;
+    const res = await fetch(url, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -152,8 +236,9 @@ async function fetchRecentPlanId(token) {
     if (!res.ok) throw new Error('Failed to fetch recent plan id');
     return res.json();
 }
-async function fetchWorkoutPlans(token) {
-    const res = await fetch(`${API_BASE_URL}/api/workout-plan`, {
+async function fetchWorkoutPlans(token, user_id) {
+    const url = user_id ? `${API_BASE_URL}/api/workout-plan?user_id=${user_id}` : `${API_BASE_URL}/api/workout-plan`;
+    const res = await fetch(url, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -179,6 +264,126 @@ async function fetchPerformanceGraph(token, workout_type, limit) {
     if (!res.ok) throw new Error('Failed to fetch performance graph');
     return res.blob();
 }
+async function fetchBodyStatsHistory(token, user_id) {
+    const url = user_id ? `${API_BASE_URL}/api/workout/body-stats-history?user_id=${user_id}` : `${API_BASE_URL}/api/workout/body-stats-history`;
+    const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!res.ok) throw new Error('Failed to fetch body stats history');
+    return res.json();
+}
+async function fetchClients(token) {
+    const res = await fetch(`${API_BASE_URL}/api/coach/clients`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        if (res.status === 404 || res.status === 403) return [];
+        throw new Error('Failed to fetch clients');
+    }
+    return res.json();
+}
+async function inviteClient(token, client_id, username) {
+    const res = await fetch(`${API_BASE_URL}/api/coach/invite`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            client_id,
+            username
+        })
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(()=>({}));
+        throw new Error(errorData.error || 'Failed to invite client');
+    }
+    return res.json();
+}
+async function unsubscribeApi(token) {
+    const res = await fetch(`${API_BASE_URL}/api/user/unsubscribe`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to unsubscribe');
+    }
+    return res.json();
+}
+async function upgradeSubscription(token) {
+    const res = await fetch(`${API_BASE_URL}/api/user/upgrade`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!res.ok) throw new Error('Upgrade failed');
+    return res.json();
+}
+const fetchAllUsers = async (token)=>{
+    const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) throw new Error('Failed to fetch users');
+    return res.json();
+};
+const updateUserRoleApi = async (token, userId, status)=>{
+    const res = await fetch(`${API_BASE_URL}/api/admin/user/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            status
+        })
+    });
+    if (!res.ok) throw new Error('Failed to update role');
+    return res.json();
+};
+const fetchAllPublicExercisesApi = async (token)=>{
+    const res = await fetch(`${API_BASE_URL}/api/admin/exercises`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) throw new Error('Failed to fetch public exercises');
+    return res.json();
+};
+const updateAdminExerciseApi = async (token, id, exerciseData)=>{
+    const res = await fetch(`${API_BASE_URL}/api/admin/exercise/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(exerciseData)
+    });
+    if (!res.ok) throw new Error('Failed to update exercise');
+    return res.json();
+};
+const deleteAdminExerciseApi = async (token, id)=>{
+    const res = await fetch(`${API_BASE_URL}/api/admin/exercise/${id}`, {
+        method: 'DELETE',
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) throw new Error('Failed to delete exercise');
+    return res.json();
+};
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
@@ -209,21 +414,30 @@ var _s = __turbopack_context__.k.signature();
 function ShareButton() {
     _s();
     const [isModalOpen, setIsModalOpen] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [shareType, setShareType] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('selection');
     const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
-    const [fetchingPRs, setFetchingPRs] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [fetchingData, setFetchingData] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     const [prList, setPrList] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [planList, setPlanList] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [searchQuery, setSearchQuery] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
     const currentDate = new Date();
     const [selectedMonth, setSelectedMonth] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("all");
     const [selectedYear, setSelectedYear] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("all");
     const { token } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"])();
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ShareButton.useEffect": ()=>{
-            if (isModalOpen && token) {
-                setFetchingPRs(true);
+            setShareType('selection');
+        }
+    }["ShareButton.useEffect"], [
+        isModalOpen
+    ]);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ShareButton.useEffect": ()=>{
+            if (isModalOpen && shareType === 'pr' && token) {
+                setFetchingData(true);
                 (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["fetchWorkout"])(token, '', 100).then({
                     "ShareButton.useEffect": (data)=>{
                         if (Array.isArray(data)) {
-                            // Simply use the raw data sorted by newest first
                             const newestFirstData = [
                                 ...data
                             ].sort({
@@ -235,15 +449,29 @@ function ShareButton() {
                 }["ShareButton.useEffect"]).catch({
                     "ShareButton.useEffect": (err)=>console.error("Failed to load PRs:", err)
                 }["ShareButton.useEffect"]).finally({
-                    "ShareButton.useEffect": ()=>setFetchingPRs(false)
+                    "ShareButton.useEffect": ()=>setFetchingData(false)
+                }["ShareButton.useEffect"]);
+            } else if (isModalOpen && shareType === 'plan' && token) {
+                setFetchingData(true);
+                (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["fetchWorkoutPlans"])(token).then({
+                    "ShareButton.useEffect": (data)=>{
+                        if (Array.isArray(data)) {
+                            setPlanList(data);
+                        }
+                    }
+                }["ShareButton.useEffect"]).catch({
+                    "ShareButton.useEffect": (err)=>console.error("Failed to load Plans:", err)
+                }["ShareButton.useEffect"]).finally({
+                    "ShareButton.useEffect": ()=>setFetchingData(false)
                 }["ShareButton.useEffect"]);
             }
         }
     }["ShareButton.useEffect"], [
         isModalOpen,
+        shareType,
         token
     ]);
-    const handleShare = async (selectedPrid)=>{
+    const handleSharePR = async (selectedPrid)=>{
         if (!selectedPrid || selectedPrid === 'undefined') {
             alert('Error: Could not identify PR ID for this workout.');
             return;
@@ -258,6 +486,29 @@ function ShareButton() {
                 })
             ]);
             alert('Image copied to clipboard!');
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`Failed: ${error.message}`);
+        } finally{
+            setIsLoading(false);
+        }
+    };
+    const handleSharePlan = async (selectedPlanId)=>{
+        if (!selectedPlanId || selectedPlanId === 'undefined') {
+            alert('Error: Could not identify Plan ID.');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            if (!token) throw new Error("No token available");
+            const blob = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["generatePlanShareImage"])(token, selectedPlanId);
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    [blob.type]: blob
+                })
+            ]);
+            alert('Plan image copied to clipboard!');
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error:', error);
@@ -297,6 +548,7 @@ function ShareButton() {
         const matchYear = selectedYear === "all" || d.getFullYear().toString() === selectedYear;
         return matchMonth && matchYear;
     });
+    const filteredPlanList = planList.filter((plan)=>plan.plan_name.toLowerCase().includes(searchQuery.toLowerCase()));
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
         children: [
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -309,21 +561,45 @@ function ShareButton() {
                         size: 18
                     }, void 0, false, {
                         fileName: "[project]/app/component/ShareButton.tsx",
-                        lineNumber: 95,
+                        lineNumber: 139,
                         columnNumber: 17
                     }, this),
-                    isLoading ? 'Sharing...' : 'Share PR'
+                    isLoading ? 'Sharing...' : 'Share'
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/ShareButton.tsx",
-                lineNumber: 89,
+                lineNumber: 133,
                 columnNumber: 13
             }, this),
             isModalOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4",
                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "bg-zinc-900 border border-zinc-800 rounded-3xl p-6 w-full max-w-sm relative animate-in zoom-in-95 duration-200",
+                    style: {
+                        maxHeight: '90vh',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    },
                     children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: ()=>{
+                                if (shareType !== 'selection') setShareType('selection');
+                                else setIsModalOpen(false);
+                            },
+                            className: "absolute top-4 left-4 text-zinc-400 hover:text-white transition-colors",
+                            children: shareType !== 'selection' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                className: "text-sm",
+                                children: "← Back"
+                            }, void 0, false, {
+                                fileName: "[project]/app/component/ShareButton.tsx",
+                                lineNumber: 153,
+                                columnNumber: 58
+                            }, this) : null
+                        }, void 0, false, {
+                            fileName: "[project]/app/component/ShareButton.tsx",
+                            lineNumber: 146,
+                            columnNumber: 25
+                        }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                             onClick: ()=>setIsModalOpen(false),
                             className: "absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors",
@@ -331,277 +607,543 @@ function ShareButton() {
                                 size: 20
                             }, void 0, false, {
                                 fileName: "[project]/app/component/ShareButton.tsx",
-                                lineNumber: 106,
+                                lineNumber: 160,
                                 columnNumber: 29
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 102,
+                            lineNumber: 156,
                             columnNumber: 25
                         }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "text-center space-y-4 mb-4",
+                        shareType === 'selection' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "text-center space-y-6 mt-8 mb-4",
                             children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "mx-auto w-12 h-12 bg-pink-500/10 text-pink-500 rounded-full flex items-center justify-center mb-2",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Trophy, {
-                                        size: 24
-                                    }, void 0, false, {
-                                        fileName: "[project]/app/component/ShareButton.tsx",
-                                        lineNumber: 111,
-                                        columnNumber: 33
-                                    }, this)
-                                }, void 0, false, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 110,
-                                    columnNumber: 29
-                                }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                    className: "text-xl font-bold text-white",
-                                    children: "Select a PR to Share"
+                                    className: "text-xl font-bold text-white mb-6",
+                                    children: "What to share?"
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 113,
-                                    columnNumber: 29
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 109,
-                            columnNumber: 25
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "flex items-center gap-2 mb-4 justify-center",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
-                                    value: selectedMonth,
-                                    onChange: (e)=>setSelectedMonth(e.target.value),
-                                    className: "bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                            value: "all",
-                                            children: "All Months"
-                                        }, void 0, false, {
-                                            fileName: "[project]/app/component/ShareButton.tsx",
-                                            lineNumber: 122,
-                                            columnNumber: 33
-                                        }, this),
-                                        months.map((month, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                value: index,
-                                                children: month
-                                            }, month, false, {
-                                                fileName: "[project]/app/component/ShareButton.tsx",
-                                                lineNumber: 124,
-                                                columnNumber: 37
-                                            }, this))
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 117,
-                                    columnNumber: 29
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
-                                    value: selectedYear,
-                                    onChange: (e)=>setSelectedYear(e.target.value),
-                                    className: "bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer",
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                            value: "all",
-                                            children: "All Years"
-                                        }, void 0, false, {
-                                            fileName: "[project]/app/component/ShareButton.tsx",
-                                            lineNumber: 132,
-                                            columnNumber: 33
-                                        }, this),
-                                        years.map((year)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
-                                                value: year,
-                                                children: year
-                                            }, year, false, {
-                                                fileName: "[project]/app/component/ShareButton.tsx",
-                                                lineNumber: 134,
-                                                columnNumber: 37
-                                            }, this))
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 127,
-                                    columnNumber: 29
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 116,
-                            columnNumber: 25
-                        }, this),
-                        fetchingPRs ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "flex flex-col items-center justify-center py-8 space-y-4",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Loader2, {
-                                    className: "w-8 h-8 text-pink-500 animate-spin"
-                                }, void 0, false, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 141,
+                                    lineNumber: 165,
                                     columnNumber: 33
                                 }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-zinc-400 text-sm",
-                                    children: "Loading your PRs..."
-                                }, void 0, false, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 142,
-                                    columnNumber: 33
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 140,
-                            columnNumber: 29
-                        }, this) : filteredPrList.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "text-center py-8",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-zinc-400",
-                                    children: "No PRs found for the selected date."
-                                }, void 0, false, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 146,
-                                    columnNumber: 33
-                                }, this),
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-xs text-zinc-500 mt-2",
-                                    children: "Keep training hard! 💪"
-                                }, void 0, false, {
-                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 147,
-                                    columnNumber: 33
-                                }, this)
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 145,
-                            columnNumber: 29
-                        }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "space-y-3 max-h-64 overflow-y-auto pr-2",
-                            children: filteredPrList.map((pr, i)=>{
-                                const id = pr.PRID || pr.WorkoutID || pr.id || pr.workout_id || pr.WorkoutId || pr._id;
-                                return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                    onClick: ()=>handleShare(String(id)),
-                                    disabled: isLoading,
-                                    className: "w-full flex items-center justify-between p-3 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl border border-zinc-700/50 transition-colors text-left disabled:opacity-50",
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: ()=>setShareType('pr'),
+                                    className: "w-full flex flex-col items-center p-4 bg-zinc-800/50 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-colors",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "w-12 h-12 bg-pink-500/10 text-pink-500 rounded-full flex items-center justify-center mb-3",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Trophy, {
+                                                size: 24
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                lineNumber: 171,
+                                                columnNumber: 41
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 170,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "font-bold text-white text-lg",
+                                            children: "Personal Record"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 173,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "text-sm text-zinc-400 mt-1",
+                                            children: "Share your best performance"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 174,
+                                            columnNumber: 37
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 166,
+                                    columnNumber: 33
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                    onClick: ()=>setShareType('plan'),
+                                    className: "w-full flex flex-col items-center p-4 bg-zinc-800/50 hover:bg-zinc-700 rounded-xl border border-zinc-700 transition-colors",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-3",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(HeartPulse, {
+                                                size: 24
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                lineNumber: 182,
+                                                columnNumber: 41
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 181,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "font-bold text-white text-lg",
+                                            children: "Workout Plan"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 184,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "text-sm text-zinc-400 mt-1",
+                                            children: "Share your weekly routine"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 185,
+                                            columnNumber: 37
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 177,
+                                    columnNumber: 33
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app/component/ShareButton.tsx",
+                            lineNumber: 164,
+                            columnNumber: 29
+                        }, this),
+                        shareType === 'pr' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "text-center space-y-4 mb-4 mt-6",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "mx-auto w-12 h-12 bg-pink-500/10 text-pink-500 rounded-full flex items-center justify-center mb-2",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Trophy, {
+                                                size: 24
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                lineNumber: 194,
+                                                columnNumber: 41
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 193,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                            className: "text-xl font-bold text-white",
+                                            children: "Select a PR to Share"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 196,
+                                            columnNumber: 37
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 192,
+                                    columnNumber: 33
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex items-center gap-2 mb-4 justify-center",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                            value: selectedMonth,
+                                            onChange: (e)=>setSelectedMonth(e.target.value),
+                                            className: "bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer",
                                             children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "font-bold text-white text-sm capitalize",
-                                                    children: pr.workout_type?.replace(/_/g, ' ')
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "all",
+                                                    children: "All Months"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/component/ShareButton.tsx",
-                                                    lineNumber: 161,
-                                                    columnNumber: 49
+                                                    lineNumber: 205,
+                                                    columnNumber: 41
                                                 }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                    className: "text-xs text-zinc-400",
-                                                    children: new Date(pr.date).toLocaleDateString()
-                                                }, void 0, false, {
-                                                    fileName: "[project]/app/component/ShareButton.tsx",
-                                                    lineNumber: 162,
-                                                    columnNumber: 49
-                                                }, this)
+                                                months.map((month, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                        value: index,
+                                                        children: month
+                                                    }, month, false, {
+                                                        fileName: "[project]/app/component/ShareButton.tsx",
+                                                        lineNumber: 207,
+                                                        columnNumber: 45
+                                                    }, this))
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/component/ShareButton.tsx",
-                                            lineNumber: 160,
-                                            columnNumber: 45
+                                            lineNumber: 200,
+                                            columnNumber: 37
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "text-right",
-                                            children: pr.time ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "font-bold text-pink-400",
-                                                        children: formatTime(Number(pr.time))
-                                                    }, void 0, false, {
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
+                                            value: selectedYear,
+                                            onChange: (e)=>setSelectedYear(e.target.value),
+                                            className: "bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                    value: "all",
+                                                    children: "All Years"
+                                                }, void 0, false, {
+                                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                                    lineNumber: 215,
+                                                    columnNumber: 41
+                                                }, this),
+                                                years.map((year)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
+                                                        value: year,
+                                                        children: year
+                                                    }, year, false, {
                                                         fileName: "[project]/app/component/ShareButton.tsx",
-                                                        lineNumber: 167,
-                                                        columnNumber: 57
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "text-xs text-zinc-400",
-                                                        children: "duration"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/app/component/ShareButton.tsx",
-                                                        lineNumber: 168,
-                                                        columnNumber: 57
-                                                    }, this)
-                                                ]
-                                            }, void 0, true) : pr.weight ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "font-bold text-pink-400",
+                                                        lineNumber: 217,
+                                                        columnNumber: 45
+                                                    }, this))
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 210,
+                                            columnNumber: 37
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 199,
+                                    columnNumber: 33
+                                }, this),
+                                fetchingData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex flex-col items-center justify-center py-8 space-y-4",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Loader2, {
+                                            className: "w-8 h-8 text-pink-500 animate-spin"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 224,
+                                            columnNumber: 41
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-zinc-400 text-sm",
+                                            children: "Loading your PRs..."
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 225,
+                                            columnNumber: 41
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 223,
+                                    columnNumber: 37
+                                }, this) : filteredPrList.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "text-center py-8",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-zinc-400",
+                                            children: "No PRs found for the selected date."
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 229,
+                                            columnNumber: 41
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-xs text-zinc-500 mt-2",
+                                            children: "Keep training hard! 💪"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 230,
+                                            columnNumber: 41
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 228,
+                                    columnNumber: 37
+                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "space-y-3 overflow-y-auto pr-2",
+                                    style: {
+                                        flex: 1
+                                    },
+                                    children: filteredPrList.map((pr, i)=>{
+                                        const id = pr.PRID || pr.WorkoutID || pr.id || pr.workout_id || pr.WorkoutId || pr._id;
+                                        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            onClick: ()=>handleSharePR(String(id)),
+                                            disabled: isLoading,
+                                            className: "w-full flex items-center justify-between p-3 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl border border-zinc-700/50 transition-colors text-left disabled:opacity-50",
+                                            children: [
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    children: [
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "font-bold text-white text-sm capitalize",
+                                                            children: pr.workout_type?.replace(/_/g, ' ')
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                                            lineNumber: 244,
+                                                            columnNumber: 57
+                                                        }, this),
+                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                            className: "text-xs text-zinc-400",
+                                                            children: new Date(pr.date).toLocaleDateString()
+                                                        }, void 0, false, {
+                                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                                            lineNumber: 245,
+                                                            columnNumber: 57
+                                                        }, this)
+                                                    ]
+                                                }, void 0, true, {
+                                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                                    lineNumber: 243,
+                                                    columnNumber: 53
+                                                }, this),
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "text-right",
+                                                    children: pr.time ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                                                         children: [
-                                                            pr.weight,
-                                                            " kg"
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                className: "font-bold text-pink-400",
+                                                                children: formatTime(Number(pr.time))
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                                lineNumber: 250,
+                                                                columnNumber: 65
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                className: "text-xs text-zinc-400",
+                                                                children: "duration"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                                lineNumber: 251,
+                                                                columnNumber: 65
+                                                            }, this)
                                                         ]
-                                                    }, void 0, true, {
-                                                        fileName: "[project]/app/component/ShareButton.tsx",
-                                                        lineNumber: 172,
-                                                        columnNumber: 57
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "text-xs text-zinc-400",
+                                                    }, void 0, true) : pr.weight ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                                                        children: [
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                className: "font-bold text-pink-400",
+                                                                children: [
+                                                                    pr.weight,
+                                                                    " kg"
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                                lineNumber: 255,
+                                                                columnNumber: 65
+                                                            }, this),
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                                className: "text-xs text-zinc-400",
+                                                                children: [
+                                                                    pr.reps || 0,
+                                                                    " reps"
+                                                                ]
+                                                            }, void 0, true, {
+                                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                                lineNumber: 256,
+                                                                columnNumber: 65
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "font-bold text-pink-400",
                                                         children: [
                                                             pr.reps || 0,
                                                             " reps"
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/app/component/ShareButton.tsx",
-                                                        lineNumber: 173,
-                                                        columnNumber: 57
+                                                        lineNumber: 259,
+                                                        columnNumber: 61
                                                     }, this)
-                                                ]
-                                            }, void 0, true) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                className: "font-bold text-pink-400",
-                                                children: [
-                                                    pr.reps || 0,
-                                                    " reps"
-                                                ]
-                                            }, void 0, true, {
+                                                }, void 0, false, {
+                                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                                    lineNumber: 247,
+                                                    columnNumber: 53
+                                                }, this)
+                                            ]
+                                        }, i, true, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 237,
+                                            columnNumber: 49
+                                        }, this);
+                                    })
+                                }, void 0, false, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 233,
+                                    columnNumber: 37
+                                }, this)
+                            ]
+                        }, void 0, true),
+                        shareType === 'plan' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "text-center space-y-4 mb-4 mt-6",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "mx-auto w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-2",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(HeartPulse, {
+                                                size: 24
+                                            }, void 0, false, {
                                                 fileName: "[project]/app/component/ShareButton.tsx",
-                                                lineNumber: 176,
-                                                columnNumber: 53
+                                                lineNumber: 274,
+                                                columnNumber: 41
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/app/component/ShareButton.tsx",
-                                            lineNumber: 164,
-                                            columnNumber: 45
+                                            lineNumber: 273,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                            className: "text-xl font-bold text-white",
+                                            children: "Select a Plan to Share"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 276,
+                                            columnNumber: 37
                                         }, this)
                                     ]
-                                }, i, true, {
+                                }, void 0, true, {
                                     fileName: "[project]/app/component/ShareButton.tsx",
-                                    lineNumber: 154,
-                                    columnNumber: 41
-                                }, this);
-                            })
-                        }, void 0, false, {
-                            fileName: "[project]/app/component/ShareButton.tsx",
-                            lineNumber: 150,
-                            columnNumber: 29
-                        }, this)
+                                    lineNumber: 272,
+                                    columnNumber: 33
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "mb-4 relative",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                            className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Search, {
+                                                className: "h-4 w-4 text-zinc-400"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                lineNumber: 281,
+                                                columnNumber: 41
+                                            }, this)
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 280,
+                                            columnNumber: 37
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            type: "text",
+                                            value: searchQuery,
+                                            onChange: (e)=>setSearchQuery(e.target.value),
+                                            placeholder: "Search plans...",
+                                            className: "w-full bg-zinc-800 text-white border border-zinc-700 rounded-xl pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 283,
+                                            columnNumber: 37
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 279,
+                                    columnNumber: 33
+                                }, this),
+                                fetchingData ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "flex flex-col items-center justify-center py-8 space-y-4",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Loader2, {
+                                            className: "w-8 h-8 text-blue-500 animate-spin"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 294,
+                                            columnNumber: 41
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-zinc-400 text-sm",
+                                            children: "Loading your Plans..."
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 295,
+                                            columnNumber: 41
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 293,
+                                    columnNumber: 37
+                                }, this) : filteredPlanList.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "text-center py-8",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-zinc-400",
+                                            children: "No plans found."
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 299,
+                                            columnNumber: 41
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "text-xs text-zinc-500 mt-2",
+                                            children: "Create a plan first! 📋"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 300,
+                                            columnNumber: 41
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 298,
+                                    columnNumber: 37
+                                }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "space-y-3 overflow-y-auto pr-2",
+                                    style: {
+                                        flex: 1
+                                    },
+                                    children: filteredPlanList.map((plan, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            onClick: ()=>handleSharePlan(String(plan.plan_id)),
+                                            disabled: isLoading,
+                                            className: "w-full flex items-center justify-between p-3 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl border border-zinc-700/50 transition-colors text-left disabled:opacity-50",
+                                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "font-bold text-white text-sm capitalize",
+                                                        children: plan.plan_name
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/component/ShareButton.tsx",
+                                                        lineNumber: 312,
+                                                        columnNumber: 53
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                        className: "text-xs text-zinc-400",
+                                                        children: [
+                                                            plan.days?.length || 0,
+                                                            " active days"
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/app/component/ShareButton.tsx",
+                                                        lineNumber: 313,
+                                                        columnNumber: 53
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/component/ShareButton.tsx",
+                                                lineNumber: 311,
+                                                columnNumber: 49
+                                            }, this)
+                                        }, i, false, {
+                                            fileName: "[project]/app/component/ShareButton.tsx",
+                                            lineNumber: 305,
+                                            columnNumber: 45
+                                        }, this))
+                                }, void 0, false, {
+                                    fileName: "[project]/app/component/ShareButton.tsx",
+                                    lineNumber: 303,
+                                    columnNumber: 37
+                                }, this)
+                            ]
+                        }, void 0, true)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/ShareButton.tsx",
-                    lineNumber: 101,
+                    lineNumber: 145,
                     columnNumber: 21
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/component/ShareButton.tsx",
-                lineNumber: 100,
+                lineNumber: 144,
                 columnNumber: 17
             }, this)
         ]
     }, void 0, true);
 }
-_s(ShareButton, "o6qw6SXuEDKtOmgWQ7NwpfJ9JLY=", false, function() {
+_s(ShareButton, "zw2iJompHBd0fYFhif0BeazOtE8=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
@@ -625,7 +1167,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$ne
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/context/AuthContext.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/lib/apiClient.ts [app-client] (ecmascript)");
 ;
-var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature();
+var _s = __turbopack_context__.k.signature(), _s1 = __turbopack_context__.k.signature(), _s2 = __turbopack_context__.k.signature();
 'use client';
 ;
 ;
@@ -637,6 +1179,10 @@ function WorkoutCoordinator({ onClose }) {
     // States for flow progression
     const [plans, setPlans] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
     const [completedExercises, setCompletedExercises] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])([]);
+    const [recentBodyStats, setRecentBodyStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [bodyStats, setBodyStats] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [draftWeight, setDraftWeight] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    const [draftHeight, setDraftHeight] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [selectedPlan, setSelectedPlan] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [selectedDay, setSelectedDay] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [selectedExercise, setSelectedExercise] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
@@ -656,7 +1202,10 @@ function WorkoutCoordinator({ onClose }) {
                             }
                         });
                         const plansData = plansRes.ok ? await plansRes.json() : [];
-                        setPlans(plansData);
+                        const activePlans = plansData.filter({
+                            "WorkoutCoordinator.useEffect.initializeData.activePlans": (p)=>p.type !== 'G' && p.Type !== 'G' && p.plan_type !== 'G' && p.PlanType !== 'G'
+                        }["WorkoutCoordinator.useEffect.initializeData.activePlans"]);
+                        setPlans(activePlans);
                         // Fetch completed exercises for today
                         const completedRes = await fetch(`${__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["API_BASE_URL"]}/api/workout/today-completed`, {
                             headers: {
@@ -665,6 +1214,23 @@ function WorkoutCoordinator({ onClose }) {
                         });
                         const completedData = completedRes.ok ? await completedRes.json() : [];
                         setCompletedExercises(completedData);
+                        // Fetch recent body stats
+                        const bodyStatsRes = await fetch(`${__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["API_BASE_URL"]}/api/workout/recent-body-stats`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        const bodyStatsData = bodyStatsRes.ok ? await bodyStatsRes.json() : null;
+                        if (bodyStatsData && bodyStatsData.UserWeight !== null) {
+                            const rw = Number(bodyStatsData.UserWeight);
+                            const rh = Number(bodyStatsData.UserHeight);
+                            setRecentBodyStats({
+                                userWeight: rw,
+                                userHeight: rh
+                            });
+                            setDraftWeight(rw);
+                            setDraftHeight(rh);
+                        }
                     } catch (error) {
                         console.error('Failed to initialize workout data', error);
                     } finally{
@@ -686,14 +1252,14 @@ function WorkoutCoordinator({ onClose }) {
                     children: "Select a Workout Plan"
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 61,
+                    lineNumber: 85,
                     columnNumber: 7
                 }, this),
                 plans.length === 0 && !loading && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                     children: "No plans found."
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 62,
+                    lineNumber: 86,
                     columnNumber: 42
                 }, this),
                 plans.map((plan)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -710,18 +1276,18 @@ function WorkoutCoordinator({ onClose }) {
                             children: plan.plan_name
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 75,
+                            lineNumber: 99,
                             columnNumber: 11
                         }, this)
                     }, plan.plan_id, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 64,
+                        lineNumber: 88,
                         columnNumber: 9
                     }, this))
             ]
         }, void 0, true, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 60,
+            lineNumber: 84,
             columnNumber: 5
         }, this);
     const renderSelectDay = ()=>{
@@ -748,7 +1314,12 @@ function WorkoutCoordinator({ onClose }) {
                 const confirmMsg = "You are going to continue with a workout outside today's routine. Do you want to continue?";
                 if (!window.confirm(confirmMsg)) return;
             }
-            setStep('SELECT_EXERCISE');
+            // If we haven't asked for daily body stats yet, ask now
+            if (!bodyStats) {
+                setStep('RECORD_BODY_STATS');
+            } else {
+                setStep('SELECT_EXERCISE');
+            }
         };
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex flex-col gap-6 animate-in fade-in duration-300",
@@ -761,7 +1332,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "← Back to Plans"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 107,
+                            lineNumber: 137,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -769,7 +1340,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "Select Day"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 113,
+                            lineNumber: 143,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -781,19 +1352,19 @@ function WorkoutCoordinator({ onClose }) {
                                     children: selectedPlan.plan_name
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 114,
+                                    lineNumber: 144,
                                     columnNumber: 54
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 114,
+                            lineNumber: 144,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 106,
+                    lineNumber: 136,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -834,7 +1405,7 @@ function WorkoutCoordinator({ onClose }) {
                                         children: name[0]
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 150,
+                                        lineNumber: 180,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -842,24 +1413,24 @@ function WorkoutCoordinator({ onClose }) {
                                         children: name
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 151,
+                                        lineNumber: 181,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, name, true, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 149,
+                                lineNumber: 179,
                                 columnNumber: 17
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 119,
+                        lineNumber: 149,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 118,
+                    lineNumber: 148,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -875,7 +1446,7 @@ function WorkoutCoordinator({ onClose }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 160,
+                            lineNumber: 190,
                             columnNumber: 11
                         }, this),
                         exercisesForDay.length > 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -890,7 +1461,7 @@ function WorkoutCoordinator({ onClose }) {
                                                 children: i + 1
                                             }, void 0, false, {
                                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                                lineNumber: 169,
+                                                lineNumber: 199,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -898,23 +1469,23 @@ function WorkoutCoordinator({ onClose }) {
                                                 children: ex.name
                                             }, void 0, false, {
                                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                                lineNumber: 172,
+                                                lineNumber: 202,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 198,
                                         columnNumber: 19
                                     }, this)
                                 }, i, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 167,
+                                    lineNumber: 197,
                                     columnNumber: 17
                                 }, this))
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 165,
+                            lineNumber: 195,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "bg-zinc-900 border border-zinc-800 py-8 rounded-2xl flex flex-col items-center justify-center text-center",
@@ -924,7 +1495,7 @@ function WorkoutCoordinator({ onClose }) {
                                     children: "😴"
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 179,
+                                    lineNumber: 209,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -932,7 +1503,7 @@ function WorkoutCoordinator({ onClose }) {
                                     children: "Rest Day"
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 180,
+                                    lineNumber: 210,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -940,19 +1511,19 @@ function WorkoutCoordinator({ onClose }) {
                                     children: "No exercises scheduled for this day."
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 181,
+                                    lineNumber: 211,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 178,
+                            lineNumber: 208,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 159,
+                    lineNumber: 189,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -962,13 +1533,13 @@ function WorkoutCoordinator({ onClose }) {
                     children: "Confirm Day Plan"
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 187,
+                    lineNumber: 217,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 105,
+            lineNumber: 135,
             columnNumber: 7
         }, this);
     };
@@ -979,9 +1550,203 @@ function WorkoutCoordinator({ onClose }) {
             children: "(Today)"
         }, void 0, false, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 204,
+            lineNumber: 234,
             columnNumber: 32
         }, this) : null;
+    };
+    const renderRecordBodyStats = ()=>{
+        return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "flex flex-col gap-6 animate-in fade-in duration-300",
+            children: [
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: ()=>setStep('SELECT_DAY'),
+                            className: "text-sm font-medium text-pink-500 hover:text-pink-400 mb-4 flex items-center transition",
+                            children: "← Back to Day Selection"
+                        }, void 0, false, {
+                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                            lineNumber: 241,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                            className: "text-2xl font-bold text-white mb-1",
+                            children: "Daily Check-in"
+                        }, void 0, false, {
+                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                            lineNumber: 247,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-zinc-400 text-sm",
+                            children: [
+                                "Log your body weight and height before starting.",
+                                recentBodyStats && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "block mt-1 text-pink-400 font-medium",
+                                    children: "Values are auto-filled from your last session."
+                                }, void 0, false, {
+                                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                    lineNumber: 250,
+                                    columnNumber: 33
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                            lineNumber: 248,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                    lineNumber: 240,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "flex flex-col gap-4",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "bg-zinc-900 border border-zinc-800 p-5 rounded-2xl",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                    className: "text-zinc-400 text-sm font-medium mb-3 block",
+                                    children: [
+                                        "Body Weight",
+                                        recentBodyStats?.userWeight && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold",
+                                            children: [
+                                                "Last: ",
+                                                recentBodyStats.userWeight,
+                                                " kg"
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 259,
+                                            columnNumber: 17
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                    lineNumber: 256,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "relative",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            type: "number",
+                                            value: draftWeight,
+                                            onChange: (e)=>setDraftWeight(e.target.value === '' ? '' : Number(e.target.value)),
+                                            className: "w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 265,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium",
+                                            children: "kg"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 271,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                    lineNumber: 264,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                            lineNumber: 255,
+                            columnNumber: 11
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "bg-zinc-900 border border-zinc-800 p-5 rounded-2xl",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                    className: "text-zinc-400 text-sm font-medium mb-3 block",
+                                    children: [
+                                        "Height",
+                                        recentBodyStats?.userHeight && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold",
+                                            children: [
+                                                "Last: ",
+                                                recentBodyStats.userHeight,
+                                                " cm"
+                                            ]
+                                        }, void 0, true, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 279,
+                                            columnNumber: 17
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                    lineNumber: 276,
+                                    columnNumber: 13
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                    className: "relative",
+                                    children: [
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                            type: "number",
+                                            value: draftHeight,
+                                            onChange: (e)=>setDraftHeight(e.target.value === '' ? '' : Number(e.target.value)),
+                                            className: "w-full bg-zinc-800 border border-zinc-700 rounded-xl py-3 px-4 text-white text-lg font-bold focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 285,
+                                            columnNumber: 15
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                            className: "absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium",
+                                            children: "cm"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                            lineNumber: 291,
+                                            columnNumber: 15
+                                        }, this)
+                                    ]
+                                }, void 0, true, {
+                                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                                    lineNumber: 284,
+                                    columnNumber: 13
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                            lineNumber: 275,
+                            columnNumber: 11
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                    lineNumber: 254,
+                    columnNumber: 9
+                }, this),
+                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                    onClick: ()=>{
+                        setBodyStats({
+                            userWeight: Number(draftWeight),
+                            userHeight: Number(draftHeight)
+                        });
+                        setStep('SELECT_EXERCISE');
+                    },
+                    className: "w-full p-4 rounded-2xl font-bold text-center transition-all bg-pink-600 text-white shadow-lg shadow-pink-600/20 hover:bg-pink-500 hover:-translate-y-1 block mt-4",
+                    children: "Confirm & Start Workout"
+                }, void 0, false, {
+                    fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+                    lineNumber: 296,
+                    columnNumber: 9
+                }, this)
+            ]
+        }, void 0, true, {
+            fileName: "[project]/app/component/WorkoutCoordinator.tsx",
+            lineNumber: 239,
+            columnNumber: 7
+        }, this);
     };
     const renderSelectExercise = ()=>{
         if (!selectedPlan || selectedDay === null) return null;
@@ -1000,7 +1765,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "← Back to Day Selection"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 219,
+                            lineNumber: 321,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1008,7 +1773,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "Select Exercise"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 225,
+                            lineNumber: 327,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1016,13 +1781,13 @@ function WorkoutCoordinator({ onClose }) {
                             children: "Pick your next move"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 226,
+                            lineNumber: 328,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 218,
+                    lineNumber: 320,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1045,7 +1810,7 @@ function WorkoutCoordinator({ onClose }) {
                                             children: isCompleted ? '✓' : i + 1
                                         }, void 0, false, {
                                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                            lineNumber: 248,
+                                            lineNumber: 350,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1054,18 +1819,18 @@ function WorkoutCoordinator({ onClose }) {
                                                 children: ex.name
                                             }, void 0, false, {
                                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                                lineNumber: 254,
+                                                lineNumber: 356,
                                                 columnNumber: 21
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                            lineNumber: 253,
+                                            lineNumber: 355,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 247,
+                                    lineNumber: 349,
                                     columnNumber: 17
                                 }, this),
                                 !isCompleted && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1073,19 +1838,19 @@ function WorkoutCoordinator({ onClose }) {
                                     children: "→"
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 259,
+                                    lineNumber: 361,
                                     columnNumber: 34
                                 }, this)
                             ]
                         }, i, true, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 234,
+                            lineNumber: 336,
                             columnNumber: 15
                         }, this);
                     })
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 229,
+                    lineNumber: 331,
                     columnNumber: 9
                 }, this),
                 allCompleted && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1096,7 +1861,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "🎉"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 267,
+                            lineNumber: 369,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1104,7 +1869,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "All done for today!"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 268,
+                            lineNumber: 370,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1112,13 +1877,13 @@ function WorkoutCoordinator({ onClose }) {
                             children: "You've crushed every exercise in this routine."
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 269,
+                            lineNumber: 371,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 266,
+                    lineNumber: 368,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1133,7 +1898,7 @@ function WorkoutCoordinator({ onClose }) {
                             children: "Continue (Change Plan)"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 275,
+                            lineNumber: 377,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1146,19 +1911,19 @@ function WorkoutCoordinator({ onClose }) {
                             children: "End Workout"
                         }, void 0, false, {
                             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                            lineNumber: 285,
+                            lineNumber: 387,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 273,
+                    lineNumber: 375,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 217,
+            lineNumber: 319,
             columnNumber: 7
         }, this);
     };
@@ -1174,11 +1939,12 @@ function WorkoutCoordinator({ onClose }) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ActiveWorkoutView, {
             exercise: selectedExercise,
             token: token,
+            bodyStats: bodyStats,
             onBack: ()=>setStep('SELECT_EXERCISE'),
             onFinish: ()=>handleFinishExercise(selectedExercise.ex_move_id)
         }, void 0, false, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 308,
+            lineNumber: 410,
             columnNumber: 7
         }, this);
     };
@@ -1188,7 +1954,7 @@ function WorkoutCoordinator({ onClose }) {
             children: "Loading..."
         }, void 0, false, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 318,
+            lineNumber: 421,
             columnNumber: 12
         }, this);
     }
@@ -1205,31 +1971,32 @@ function WorkoutCoordinator({ onClose }) {
                         children: "✕"
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 325,
+                        lineNumber: 428,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                    lineNumber: 324,
+                    lineNumber: 427,
                     columnNumber: 9
                 }, this),
                 step === 'SELECT_PLAN' && renderSelectPlan(),
                 step === 'SELECT_DAY' && renderSelectDay(),
+                step === 'RECORD_BODY_STATS' && renderRecordBodyStats(),
                 step === 'SELECT_EXERCISE' && renderSelectExercise(),
                 step === 'ACTIVE_WORKOUT' && renderActiveWorkout()
             ]
         }, void 0, true, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 323,
+            lineNumber: 426,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-        lineNumber: 322,
+        lineNumber: 425,
         columnNumber: 5
     }, this);
 }
-_s(WorkoutCoordinator, "iGk2Fuv+YkQPC1I9aJvQoOwnT+o=", false, function() {
+_s(WorkoutCoordinator, "I93GYOSHyNM0yJkwKOTce+XGWy0=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
@@ -1239,6 +2006,24 @@ _c = WorkoutCoordinator;
 // SUB-COMPONENTS for ACTIVE_WORKOUT phase
 // ------------------------------------------------------------------------------------
 const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, unit = '', lastValue = null })=>{
+    _s1();
+    const containerRef = __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useRef(null);
+    __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useEffect({
+        "SnapScroller.useEffect": ()=>{
+            if (containerRef.current) {
+                const selectedEl = containerRef.current.querySelector('[data-selected="true"]');
+                if (selectedEl) {
+                    selectedEl.scrollIntoView({
+                        behavior: 'smooth',
+                        inline: 'center',
+                        block: 'nearest'
+                    });
+                }
+            }
+        }
+    }["SnapScroller.useEffect"], [
+        value
+    ]);
     const items = [];
     for(let i = min; i <= max; i = Math.round((i + step) * 100) / 100){
         items.push(i);
@@ -1259,21 +2044,23 @@ const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, un
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 355,
+                        lineNumber: 470,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 352,
+                lineNumber: 467,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                ref: containerRef,
                 className: "flex gap-4 overflow-x-auto snap-x snap-mandatory px-4 py-2 pb-6 -mx-4 no-scrollbar items-center",
                 children: items.map((item)=>{
                     const isSelected = value === item;
                     const isLast = lastValue === item;
                     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        "data-selected": isSelected,
                         onClick: ()=>onChange(item),
                         className: `relative shrink-0 w-[72px] h-[72px] rounded-2xl flex flex-col items-center justify-center font-bold text-xl snap-center transition-all duration-200 ease-out ${isSelected ? 'bg-pink-600 text-white shadow-[0_0_20px_rgba(236,72,153,0.4)] scale-110 border-none z-10' : isLast ? 'bg-zinc-800 text-orange-400 border-2 border-orange-500/50 hover:bg-zinc-700' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 border border-zinc-700/50'}`,
                         children: [
@@ -1282,14 +2069,14 @@ const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, un
                                 children: "LAST"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 376,
+                                lineNumber: 492,
                                 columnNumber: 41
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                 children: item
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 377,
+                                lineNumber: 493,
                                 columnNumber: 15
                             }, ("TURBOPACK compile-time value", void 0)),
                             unit && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1297,31 +2084,32 @@ const SnapScroller = ({ label, value, onChange, min = 0, max = 100, step = 1, un
                                 children: unit
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 378,
+                                lineNumber: 494,
                                 columnNumber: 24
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, item, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 365,
+                        lineNumber: 480,
                         columnNumber: 13
                     }, ("TURBOPACK compile-time value", void 0));
                 })
             }, void 0, false, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 360,
+                lineNumber: 475,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0))
         ]
     }, void 0, true, {
         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-        lineNumber: 351,
+        lineNumber: 466,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
+_s1(SnapScroller, "8puyVO4ts1RhCfXUmci3vLI3Njw=");
 _c1 = SnapScroller;
-const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
-    _s1();
+const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish })=>{
+    _s2();
     const [details, setDetails] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [loading, setLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(true);
     // Struggle detection state
@@ -1425,11 +2213,14 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
         if (isSaving) return;
         setIsSaving(true);
         try {
+            const isTimeTypeLocal = details?.RecordType?.toLowerCase() === 'time';
             const payload = {
                 workout_type: exercise.name,
-                weight: details?.RecordType === 'Time' ? null : weight,
-                reps: details?.RecordType === 'Time' ? null : reps,
-                time: details?.RecordType === 'Time' ? time : null
+                weight: isTimeTypeLocal ? null : weight,
+                reps: isTimeTypeLocal ? null : reps,
+                time: isTimeTypeLocal ? time : null,
+                UserWeight: bodyStats?.userWeight,
+                UserHeight: bodyStats?.userHeight
             };
             await fetch(`${__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["API_BASE_URL"]}/api/workout/save`, {
                 method: 'POST',
@@ -1468,11 +2259,11 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
             children: "Getting station ready..."
         }, void 0, false, {
             fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-            lineNumber: 521,
+            lineNumber: 640,
             columnNumber: 12
         }, ("TURBOPACK compile-time value", void 0));
     }
-    const isTimeType = details?.RecordType === 'Time';
+    const isTimeType = details?.RecordType?.toLowerCase() === 'time';
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
         className: "flex flex-col gap-6 animate-in slide-in-from-bottom-4 duration-500 pb-10",
         children: [
@@ -1484,7 +2275,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                         children: "← Cancel & Go Back"
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 530,
+                        lineNumber: 649,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1495,7 +2286,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 536,
+                        lineNumber: 655,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -1503,13 +2294,13 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                         children: exercise.name
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 537,
+                        lineNumber: 656,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 529,
+                lineNumber: 648,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0)),
             showStruggleAlert && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1521,7 +2312,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                         children: "✕"
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 543,
+                        lineNumber: 662,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1532,7 +2323,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: "⚠️"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 550,
+                                lineNumber: 669,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1542,7 +2333,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                         children: "Struggle Detected"
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 552,
+                                        lineNumber: 671,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1550,25 +2341,25 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                         children: "Based on your recent history, we suggest dropping the weight down by a notch or reducing reps to focus strictly on perfect form. You've got this!"
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 553,
+                                        lineNumber: 672,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 551,
+                                lineNumber: 670,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 549,
+                        lineNumber: 668,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 542,
+                lineNumber: 661,
                 columnNumber: 9
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1585,14 +2376,14 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                         children: "👟"
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 566,
+                                        lineNumber: 685,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     " Steps"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 565,
+                                lineNumber: 684,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1600,13 +2391,13 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: details.Steps
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 568,
+                                lineNumber: 687,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 564,
+                        lineNumber: 683,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)),
                     details?.Caution && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1620,14 +2411,14 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                         children: "✋"
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 574,
+                                        lineNumber: 693,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     " Caution"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 573,
+                                lineNumber: 692,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1635,19 +2426,19 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: details.Caution
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 576,
+                                lineNumber: 695,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 572,
+                        lineNumber: 691,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 562,
+                lineNumber: 681,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1661,7 +2452,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: "Record Your Stats"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 584,
+                                lineNumber: 703,
                                 columnNumber: 11
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1669,13 +2460,13 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: isTimeType ? 'Timer Mode' : 'Weight / Reps'
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 585,
+                                lineNumber: 704,
                                 columnNumber: 11
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 583,
+                        lineNumber: 702,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0)),
                     isTimeType ? // Timer UI
@@ -1687,7 +2478,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: formatTime(timerSeconds)
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 591,
+                                lineNumber: 710,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1698,19 +2489,19 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                     children: timerRunning ? 'PAUSE' : 'START CLOCK'
                                 }, void 0, false, {
                                     fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                    lineNumber: 596,
+                                    lineNumber: 715,
                                     columnNumber: 15
                                 }, ("TURBOPACK compile-time value", void 0))
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 595,
+                                lineNumber: 714,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "w-full h-px bg-zinc-800 my-2"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 604,
+                                lineNumber: 723,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1724,7 +2515,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                                 children: "Final Logged Time (Seconds)"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                                lineNumber: 608,
+                                                lineNumber: 727,
                                                 columnNumber: 17
                                             }, ("TURBOPACK compile-time value", void 0)),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1734,13 +2525,13 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                                 className: "w-full bg-zinc-800 border box-border border-zinc-700 rounded-xl p-4 text-white font-bold text-xl outline-none focus:border-pink-500 transition-colors"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                                lineNumber: 609,
+                                                lineNumber: 728,
                                                 columnNumber: 17
                                             }, ("TURBOPACK compile-time value", void 0))
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 607,
+                                        lineNumber: 726,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0)),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1749,19 +2540,19 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                         children: "Autofill ⏱️"
                                     }, void 0, false, {
                                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                        lineNumber: 616,
+                                        lineNumber: 735,
                                         columnNumber: 15
                                     }, ("TURBOPACK compile-time value", void 0))
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 606,
+                                lineNumber: 725,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 590,
+                        lineNumber: 709,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0)) : // Weight and Rep UI with snapscroller
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1777,7 +2568,7 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 lastValue: lastWeight
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 627,
+                                lineNumber: 746,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0)),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(SnapScroller, {
@@ -1791,19 +2582,19 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 lastValue: lastReps
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 635,
+                                lineNumber: 754,
                                 columnNumber: 13
                             }, ("TURBOPACK compile-time value", void 0))
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 626,
+                        lineNumber: 745,
                         columnNumber: 11
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 582,
+                lineNumber: 701,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0)),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1819,21 +2610,21 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                                 children: "⏳"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 654,
+                                lineNumber: 773,
                                 columnNumber: 23
                             }, ("TURBOPACK compile-time value", void 0)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                 className: "text-xl",
                                 children: "⚡"
                             }, void 0, false, {
                                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                                lineNumber: 654,
+                                lineNumber: 773,
                                 columnNumber: 73
                             }, ("TURBOPACK compile-time value", void 0)),
                             "Continue for More Sets"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 649,
+                        lineNumber: 768,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0)),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1843,23 +2634,23 @@ const ActiveWorkoutView = ({ exercise, token, onBack, onFinish })=>{
                         children: "Finish Exercise"
                     }, void 0, false, {
                         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                        lineNumber: 658,
+                        lineNumber: 777,
                         columnNumber: 9
                     }, ("TURBOPACK compile-time value", void 0))
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-                lineNumber: 648,
+                lineNumber: 767,
                 columnNumber: 7
             }, ("TURBOPACK compile-time value", void 0))
         ]
     }, void 0, true, {
         fileName: "[project]/app/component/WorkoutCoordinator.tsx",
-        lineNumber: 527,
+        lineNumber: 646,
         columnNumber: 5
     }, ("TURBOPACK compile-time value", void 0));
 };
-_s1(ActiveWorkoutView, "LFGyy2OvWhdqBho3BU2xgYzpfpA=");
+_s2(ActiveWorkoutView, "LFGyy2OvWhdqBho3BU2xgYzpfpA=");
 _c2 = ActiveWorkoutView;
 var _c, _c1, _c2;
 __turbopack_context__.k.register(_c, "WorkoutCoordinator");
@@ -1887,6 +2678,7 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$ne
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$component$2f$ShareButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/component/ShareButton.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$component$2f$WorkoutCoordinator$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/component/WorkoutCoordinator.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/context/AuthContext.tsx [app-client] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/gymbro/node_modules/next/navigation.js [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/app/lib/apiClient.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
@@ -1898,13 +2690,27 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
+;
 function Home() {
     _s();
+    const router = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"])();
     const { isLoggedIn, login, token, user } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"])();
     const [authMode, setAuthMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "Home.useEffect": ()=>{
+            if (isLoggedIn && user?.role === 'admin') {
+                router.push('/admin');
+            }
+        }
+    }["Home.useEffect"], [
+        isLoggedIn,
+        user,
+        router
+    ]);
     // Form states
     const [username, setUsername] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [password, setPassword] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
+    const [confirmPassword, setConfirmPassword] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [email, setEmail] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [firstName, setFirstName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
     const [lastName, setLastName] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('');
@@ -2012,7 +2818,7 @@ function Home() {
                                 const planId = recentPlanRes.plan_id;
                                 const plans = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["fetchWorkoutPlans"])(token);
                                 const currentPlan = plans.find({
-                                    "Home.useEffect.fetchPlan.currentPlan": (p)=>p.plan_id === planId
+                                    "Home.useEffect.fetchPlan.currentPlan": (p)=>p.plan_id === planId && p.type !== 'G' && p.Type !== 'G' && p.plan_type !== 'G' && p.PlanType !== 'G'
                                 }["Home.useEffect.fetchPlan.currentPlan"]);
                                 if (currentPlan) {
                                     const d = new Date();
@@ -2061,39 +2867,61 @@ function Home() {
     const handleSignup = async (e)=>{
         e.preventDefault();
         setErrorMsg('');
+        if (password !== confirmPassword) {
+            setErrorMsg('Passwords do not match');
+            return;
+        }
         try {
-            // The API spec did not provide a register endpoint explicitly, assuming standard implementation:
-            // await fetch(`/api/register`, { method: 'POST', body: JSON.stringify({...}) })
-            // Temporarily simulating a token for signup completion
-            const mockToken = "mock_token_123";
-            const mockUser = {
-                id: Math.floor(Math.random() * 1000),
-                username: username || email,
-                role: 'gymgoer' // Use gymgoer as a default for signups
-            };
+            const data = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["registerApi"])({
+                username,
+                password,
+                email,
+                firstName,
+                lastName,
+                birthdate
+            });
+            const token = data.auth_token;
+            const user = data.user;
+            if (!token || !user) throw new Error('Invalid token or user received');
             // Success
-            login(mockToken, mockUser);
+            login(token, user);
             setAuthMode(null);
         } catch (err) {
             setErrorMsg(err.message || 'Registration failed');
         }
     };
+    const handleChangePassword = async (e)=>{
+        e.preventDefault();
+        setErrorMsg('');
+        if (password !== confirmPassword) {
+            setErrorMsg('Passwords do not match');
+            return;
+        }
+        try {
+            await (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$lib$2f$apiClient$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["changePasswordApi"])(username, birthdate, password);
+            // Success
+            setAuthMode('login');
+            setErrorMsg('Password changed successfully. Please log in.');
+        } catch (err) {
+            setErrorMsg(err.message || 'Failed to change password');
+        }
+    };
     if (!isLoggedIn) {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "min-h-screen bg-zinc-950 flex flex-col items-center justify-center text-white relative overflow-hidden",
+            className: "min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-900 dark:text-white relative overflow-hidden",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "absolute top-1/4 left-1/4 w-96 h-96 bg-pink-600/20 rounded-full blur-[128px]"
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 196,
+                    lineNumber: 238,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[128px]"
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 197,
+                    lineNumber: 239,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2102,23 +2930,23 @@ function Home() {
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex justify-center mb-8",
                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "bg-zinc-900 p-4 rounded-3xl border border-zinc-800 shadow-2xl",
+                                className: "bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Target, {
                                     size: 64,
                                     className: "text-pink-500"
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 202,
+                                    lineNumber: 244,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 201,
+                                lineNumber: 243,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 200,
+                            lineNumber: 242,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -2130,21 +2958,21 @@ function Home() {
                                     children: "GymBro"
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 206,
+                                    lineNumber: 248,
                                     columnNumber: 24
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 205,
+                            lineNumber: 247,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                            className: "text-xl text-zinc-400",
+                            className: "text-xl text-zinc-500 dark:text-zinc-400",
                             children: "Track your workouts, follow specialized coach plans, and crush your goals. The ultimate fitness companion."
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 208,
+                            lineNumber: 250,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2155,11 +2983,11 @@ function Home() {
                                         setAuthMode('login');
                                         setErrorMsg('');
                                     },
-                                    className: "w-full sm:w-auto px-8 py-4 bg-zinc-800 hover:bg-zinc-700 text-white rounded-full font-bold text-lg transition-all",
+                                    className: "w-full sm:w-auto px-8 py-4 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white rounded-full font-bold text-lg transition-all",
                                     children: "Log In"
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 212,
+                                    lineNumber: 254,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2167,51 +2995,51 @@ function Home() {
                                         setAuthMode('signup');
                                         setErrorMsg('');
                                     },
-                                    className: "w-full sm:w-auto px-8 py-4 bg-pink-600 hover:bg-pink-500 shadow-lg shadow-pink-600/25 text-white rounded-full font-bold text-lg transition-all",
+                                    className: "w-full sm:w-auto px-8 py-4 bg-pink-600 hover:bg-pink-500 shadow-lg shadow-pink-600/25 text-zinc-900 dark:text-white rounded-full font-bold text-lg transition-all",
                                     children: "Sign Up"
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 218,
+                                    lineNumber: 260,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 211,
+                            lineNumber: 253,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 199,
+                    lineNumber: 241,
                     columnNumber: 9
                 }, this),
                 authMode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4",
                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "bg-zinc-900 border border-zinc-800 rounded-3xl p-8 w-full max-w-[500px] overflow-y-auto max-h-[90vh] relative animate-in zoom-in-95 duration-200",
+                        className: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 w-full max-w-[500px] overflow-y-auto max-h-[90vh] relative animate-in zoom-in-95 duration-200",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 onClick: ()=>setAuthMode(null),
-                                className: "absolute top-6 right-6 text-zinc-400 hover:text-white transition-colors",
+                                className: "absolute top-6 right-6 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white transition-colors",
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(X, {
                                     size: 24
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 235,
+                                    lineNumber: 277,
                                     columnNumber: 17
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 231,
+                                lineNumber: 273,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                                 className: "text-3xl font-bold mb-6",
-                                children: authMode === 'login' ? 'Welcome Back' : 'Create Account'
+                                children: authMode === 'login' ? 'Welcome Back' : authMode === 'signup' ? 'Create Account' : 'Change Password'
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 238,
+                                lineNumber: 280,
                                 columnNumber: 15
                             }, this),
                             errorMsg && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2219,7 +3047,7 @@ function Home() {
                                 children: errorMsg
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 243,
+                                lineNumber: 285,
                                 columnNumber: 17
                             }, this),
                             authMode === 'login' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -2230,11 +3058,11 @@ function Home() {
                                         className: "space-y-2",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                 children: "Username or Email"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 251,
+                                                lineNumber: 293,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2245,7 +3073,7 @@ function Home() {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 253,
+                                                        lineNumber: 295,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2256,34 +3084,34 @@ function Home() {
                                                             setUsername(e.target.value);
                                                             setEmail(e.target.value);
                                                         },
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all",
                                                         placeholder: "bro@gym.com"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 254,
+                                                        lineNumber: 296,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 252,
+                                                lineNumber: 294,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 250,
+                                        lineNumber: 292,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "space-y-2",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                 children: "Password"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 265,
+                                                lineNumber: 307,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2294,7 +3122,7 @@ function Home() {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 267,
+                                                        lineNumber: 309,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2302,23 +3130,40 @@ function Home() {
                                                         required: true,
                                                         value: password,
                                                         onChange: (e)=>setPassword(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all",
                                                         placeholder: "��������"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 268,
+                                                        lineNumber: 310,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 266,
+                                                lineNumber: 308,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 264,
+                                        lineNumber: 306,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex justify-end",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                            type: "button",
+                                            onClick: ()=>setAuthMode('forgot_password'),
+                                            className: "text-sm text-pink-500 hover:text-pink-400 font-medium",
+                                            children: "Forgot/Change Password?"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 321,
+                                            columnNumber: 21
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 320,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2327,11 +3172,11 @@ function Home() {
                                         children: "Confirm"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 278,
+                                        lineNumber: 323,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-center text-sm text-zinc-400 mt-4",
+                                        className: "text-center text-sm text-zinc-500 dark:text-zinc-400 mt-4",
                                         children: [
                                             "Don't have an account? ",
                                             ' ',
@@ -2342,19 +3187,241 @@ function Home() {
                                                 children: "Sign up"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 283,
+                                                lineNumber: 328,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 281,
+                                        lineNumber: 326,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 249,
+                                lineNumber: 291,
+                                columnNumber: 17
+                            }, this) : authMode === 'forgot_password' ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
+                                onSubmit: handleChangePassword,
+                                className: "space-y-4",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
+                                                children: "Username"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 334,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "relative",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(UserIcon, {
+                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
+                                                        size: 20
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 336,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "text",
+                                                        required: true,
+                                                        value: username,
+                                                        onChange: (e)=>setUsername(e.target.value),
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        placeholder: "johndoe123"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 337,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 335,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 333,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
+                                                children: "Date of Birth"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 345,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "relative",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Calendar, {
+                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
+                                                        size: 20
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 347,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "date",
+                                                        required: true,
+                                                        value: birthdate,
+                                                        onChange: (e)=>setBirthdate(e.target.value),
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 348,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 346,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 344,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
+                                                children: "New Password"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 355,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "relative",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Lock, {
+                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
+                                                        size: 20
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 357,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "password",
+                                                        required: true,
+                                                        value: password,
+                                                        onChange: (e)=>setPassword(e.target.value),
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        placeholder: "••••••••"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 358,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 356,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 354,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
+                                                children: "Confirm New Password"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 366,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "relative",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Lock, {
+                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
+                                                        size: 20
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 368,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "password",
+                                                        required: true,
+                                                        value: confirmPassword,
+                                                        onChange: (e)=>setConfirmPassword(e.target.value),
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        placeholder: "••••••••"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 369,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 367,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 365,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                        type: "submit",
+                                        className: "w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-4 font-bold mt-4 transition-colors",
+                                        children: "Change Password"
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 376,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-center text-sm text-zinc-500 dark:text-zinc-400 mt-4",
+                                        children: [
+                                            "Remember your password? ",
+                                            ' ',
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                                                type: "button",
+                                                onClick: ()=>setAuthMode('login'),
+                                                className: "text-pink-500 hover:text-pink-400 font-medium",
+                                                children: "Log in"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 381,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 379,
+                                        columnNumber: 19
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/app/page.tsx",
+                                lineNumber: 332,
                                 columnNumber: 17
                             }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
                                 onSubmit: handleSignup,
@@ -2367,11 +3434,11 @@ function Home() {
                                                 className: "space-y-2",
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                        className: "text-sm font-medium text-zinc-400",
+                                                        className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                         children: "First Name"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 290,
+                                                        lineNumber: 388,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2379,28 +3446,28 @@ function Home() {
                                                         required: true,
                                                         value: firstName,
                                                         onChange: (e)=>setFirstName(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-pink-500 transition-all",
                                                         placeholder: "John"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 291,
+                                                        lineNumber: 389,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 289,
+                                                lineNumber: 387,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                 className: "space-y-2",
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                        className: "text-sm font-medium text-zinc-400",
+                                                        className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                         children: "Last Name"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 298,
+                                                        lineNumber: 396,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2408,34 +3475,34 @@ function Home() {
                                                         required: true,
                                                         value: lastName,
                                                         onChange: (e)=>setLastName(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 px-4 focus:outline-none focus:border-pink-500 transition-all",
                                                         placeholder: "Doe"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 299,
+                                                        lineNumber: 397,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 297,
+                                                lineNumber: 395,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 288,
+                                        lineNumber: 386,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "space-y-2",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                 children: "Username"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 308,
+                                                lineNumber: 406,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2446,7 +3513,7 @@ function Home() {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 310,
+                                                        lineNumber: 408,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2454,80 +3521,34 @@ function Home() {
                                                         required: true,
                                                         value: username,
                                                         onChange: (e)=>setUsername(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
                                                         placeholder: "johndoe123"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 311,
+                                                        lineNumber: 409,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 309,
+                                                lineNumber: 407,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 307,
+                                        lineNumber: 405,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "space-y-2",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
-                                                children: "Email"
-                                            }, void 0, false, {
-                                                fileName: "[project]/app/page.tsx",
-                                                lineNumber: 320,
-                                                columnNumber: 21
-                                            }, this),
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                className: "relative",
-                                                children: [
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Mail, {
-                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
-                                                        size: 20
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 322,
-                                                        columnNumber: 23
-                                                    }, this),
-                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
-                                                        type: "email",
-                                                        required: true,
-                                                        value: email,
-                                                        onChange: (e)=>setEmail(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
-                                                        placeholder: "john@example.com"
-                                                    }, void 0, false, {
-                                                        fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 323,
-                                                        columnNumber: 23
-                                                    }, this)
-                                                ]
-                                            }, void 0, true, {
-                                                fileName: "[project]/app/page.tsx",
-                                                lineNumber: 321,
-                                                columnNumber: 21
-                                            }, this)
-                                        ]
-                                    }, void 0, true, {
-                                        fileName: "[project]/app/page.tsx",
-                                        lineNumber: 319,
-                                        columnNumber: 19
-                                    }, this),
-                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                        className: "space-y-2",
-                                        children: [
-                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                 children: "Birthdate"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 332,
+                                                lineNumber: 418,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2538,7 +3559,7 @@ function Home() {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 334,
+                                                        lineNumber: 420,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2546,34 +3567,34 @@ function Home() {
                                                         required: true,
                                                         value: birthdate,
                                                         onChange: (e)=>setBirthdate(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all [color-scheme:dark]",
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all [color-scheme:dark]",
                                                         max: new Date().toISOString().split('T')[0]
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 335,
+                                                        lineNumber: 421,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 333,
+                                                lineNumber: 419,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 331,
+                                        lineNumber: 417,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         className: "space-y-2",
                                         children: [
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
-                                                className: "text-sm font-medium text-zinc-400",
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
                                                 children: "Password"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 344,
+                                                lineNumber: 430,
                                                 columnNumber: 21
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2584,7 +3605,7 @@ function Home() {
                                                         size: 20
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 346,
+                                                        lineNumber: 432,
                                                         columnNumber: 23
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2592,23 +3613,69 @@ function Home() {
                                                         required: true,
                                                         value: password,
                                                         onChange: (e)=>setPassword(e.target.value),
-                                                        className: "w-full bg-zinc-950 border border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
-                                                        placeholder: "��������"
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        placeholder: "••••••••"
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 347,
+                                                        lineNumber: 433,
                                                         columnNumber: 23
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 345,
+                                                lineNumber: 431,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 343,
+                                        lineNumber: 429,
+                                        columnNumber: 19
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "space-y-2",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("label", {
+                                                className: "text-sm font-medium text-zinc-500 dark:text-zinc-400",
+                                                children: "Confirm Password"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 442,
+                                                columnNumber: 21
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "relative",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Lock, {
+                                                        className: "absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500",
+                                                        size: 20
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 444,
+                                                        columnNumber: 23
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+                                                        type: "password",
+                                                        required: true,
+                                                        value: confirmPassword,
+                                                        onChange: (e)=>setConfirmPassword(e.target.value),
+                                                        className: "w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all",
+                                                        placeholder: "••••••••"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 445,
+                                                        columnNumber: 23
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 443,
+                                                columnNumber: 21
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 441,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2617,11 +3684,11 @@ function Home() {
                                         children: "Confirm Registration"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 355,
+                                        lineNumber: 453,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-center text-sm text-zinc-400 mt-4",
+                                        className: "text-center text-sm text-zinc-500 dark:text-zinc-400 mt-4",
                                         children: [
                                             "Already have an account? ",
                                             ' ',
@@ -2632,36 +3699,36 @@ function Home() {
                                                 children: "Log in"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 360,
+                                                lineNumber: 458,
                                                 columnNumber: 21
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 358,
+                                        lineNumber: 456,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 287,
+                                lineNumber: 385,
                                 columnNumber: 17
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 230,
+                        lineNumber: 272,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 229,
+                    lineNumber: 271,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 194,
+            lineNumber: 236,
             columnNumber: 7
         }, this);
     }
@@ -2674,7 +3741,7 @@ function Home() {
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                                className: "text-3xl font-bold text-white mb-2",
+                                className: "text-3xl font-bold text-zinc-900 dark:text-white mb-2",
                                 children: [
                                     "Welcome back, ",
                                     user?.username || 'Bro',
@@ -2682,21 +3749,21 @@ function Home() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 376,
+                                lineNumber: 474,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                className: "text-zinc-400",
+                                className: "text-zinc-500 dark:text-zinc-400",
                                 children: "Ready to crush your goals today?"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 377,
+                                lineNumber: 475,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 375,
+                        lineNumber: 473,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2708,24 +3775,24 @@ function Home() {
                                 children: "Start Workout"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 380,
+                                lineNumber: 478,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$component$2f$ShareButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 386,
+                                lineNumber: 484,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 379,
+                        lineNumber: 477,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 374,
+                lineNumber: 472,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2744,72 +3811,113 @@ function Home() {
                         color: 'text-orange-500'
                     }
                 ].map((stat, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "bg-zinc-900 border border-zinc-800 p-5 rounded-2xl flex flex-col gap-3",
+                        className: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col gap-3",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: `p-2 bg-zinc-800 rounded-lg w-fit ${stat.color}`,
+                                className: `p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg w-fit ${stat.color}`,
                                 children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(stat.icon, {
                                     size: 20
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 398,
+                                    lineNumber: 496,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 397,
+                                lineNumber: 495,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-zinc-400 text-sm",
+                                        className: "text-zinc-500 dark:text-zinc-400 text-sm",
                                         children: stat.label
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 401,
+                                        lineNumber: 499,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-2xl font-bold text-white",
+                                        className: "text-2xl font-bold text-zinc-900 dark:text-white",
                                         children: stat.value
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 402,
+                                        lineNumber: 500,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 400,
+                                lineNumber: 498,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, i, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 396,
+                        lineNumber: 494,
                         columnNumber: 11
                     }, this))
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 391,
+                lineNumber: 489,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "grid grid-cols-1 md:grid-cols-2 gap-6",
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "bg-zinc-900 border border-zinc-800 rounded-3xl p-6",
+                        className: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 flex flex-col",
                         children: [
+                            user?.role === 'gymgoer' && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 rounded-2xl p-4 mb-6 relative",
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                                        className: "text-zinc-900 dark:text-white font-bold text-sm mb-1",
+                                        children: "Looking for expert guidance?"
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 511,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "text-zinc-500 dark:text-zinc-400 text-xs mb-3",
+                                        children: "Subscribe to have a verified trainer guide your exercises to your goals."
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 512,
+                                        columnNumber: 15
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "flex justify-end",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+                                            href: "/subscribe",
+                                            className: "text-pink-400 hover:text-pink-300 text-xs font-bold transition-colors",
+                                            children: "Subscribe Now →"
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 516,
+                                            columnNumber: 17
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 515,
+                                        columnNumber: 15
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/app/page.tsx",
+                                lineNumber: 510,
+                                columnNumber: 13
+                            }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex items-center justify-between mb-6",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                        className: "text-xl font-bold text-white",
+                                        className: "text-xl font-bold text-zinc-900 dark:text-white",
                                         children: "Today's Plan"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 412,
+                                        lineNumber: 523,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -2821,23 +3929,23 @@ function Home() {
                                                 size: 16
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 414,
+                                                lineNumber: 525,
                                                 columnNumber: 24
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 413,
+                                        lineNumber: 524,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 411,
+                                lineNumber: 522,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                className: "bg-zinc-800/50 rounded-2xl p-5 border border-zinc-700/50",
+                                className: "bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-zinc-700/50 flex-grow",
                                 children: todaysPlanName ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2845,30 +3953,30 @@ function Home() {
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                 children: [
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
-                                                        className: "font-bold text-lg text-white",
+                                                        className: "font-bold text-lg text-zinc-900 dark:text-white",
                                                         children: todaysPlanName
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 422,
+                                                        lineNumber: 533,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                        className: "text-sm text-zinc-400",
+                                                        className: "text-sm text-zinc-500 dark:text-zinc-400",
                                                         children: todaysExercises.length > 0 ? `${todaysExercises.length} exercises scheduled for today` : 'Rest Day! Enjoy your recovery.'
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 423,
+                                                        lineNumber: 534,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 421,
+                                                lineNumber: 532,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 420,
+                                            lineNumber: 531,
                                             columnNumber: 17
                                         }, this),
                                         todaysExercises.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("ul", {
@@ -2877,11 +3985,11 @@ function Home() {
                                                     className: "flex justify-between items-center text-sm",
                                                     children: [
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                            className: "text-zinc-200",
+                                                            className: "text-zinc-700 dark:text-zinc-200",
                                                             children: ex.name
                                                         }, void 0, false, {
                                                             fileName: "[project]/app/page.tsx",
-                                                            lineNumber: 434,
+                                                            lineNumber: 545,
                                                             columnNumber: 25
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2889,18 +3997,18 @@ function Home() {
                                                             children: "Scheduled 🏋️"
                                                         }, void 0, false, {
                                                             fileName: "[project]/app/page.tsx",
-                                                            lineNumber: 436,
+                                                            lineNumber: 547,
                                                             columnNumber: 25
                                                         }, this)
                                                     ]
                                                 }, i, true, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 433,
+                                                    lineNumber: 544,
                                                     columnNumber: 23
                                                 }, this))
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 431,
+                                            lineNumber: 542,
                                             columnNumber: 19
                                         }, this)
                                     ]
@@ -2908,57 +4016,57 @@ function Home() {
                                     className: "text-center py-6",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "text-zinc-400 mb-4",
+                                            className: "text-zinc-500 dark:text-zinc-400 mb-4",
                                             children: "No plan assigned for today or currently active."
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 444,
+                                            lineNumber: 555,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                                             href: "/workouts",
                                             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                                                className: "bg-zinc-800 hover:bg-zinc-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors",
+                                                className: "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white px-5 py-2 rounded-full text-sm font-medium transition-colors",
                                                 children: "Find a Plan"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 446,
+                                                lineNumber: 557,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 445,
+                                            lineNumber: 556,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 443,
+                                    lineNumber: 554,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 417,
+                                lineNumber: 528,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 410,
+                        lineNumber: 508,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                        className: "bg-zinc-900 border border-zinc-800 rounded-3xl p-6",
+                        className: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6",
                         children: [
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "flex items-center justify-between mb-6",
                                 children: [
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                        className: "text-xl font-bold text-white",
+                                        className: "text-xl font-bold text-zinc-900 dark:text-white",
                                         children: "Recent Activity"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 458,
+                                        lineNumber: 569,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -2970,26 +4078,26 @@ function Home() {
                                                 size: 16
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 460,
+                                                lineNumber: 571,
                                                 columnNumber: 23
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 459,
+                                        lineNumber: 570,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 457,
+                                lineNumber: 568,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                 className: "space-y-4",
                                 children: [
                                     recentActivities.slice(0, 3).map((activity, i)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "flex items-center justify-between p-4 rounded-2xl bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-700 cursor-pointer",
+                                            className: "flex items-center justify-between p-4 rounded-2xl bg-zinc-100/30 dark:bg-zinc-800/30 hover:bg-zinc-100/50 dark:bg-zinc-800/50 transition-colors border border-transparent hover:border-zinc-300 dark:border-zinc-700 cursor-pointer",
                                             children: [
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                     className: "flex items-center gap-4",
@@ -3000,26 +4108,26 @@ function Home() {
                                                                 size: 20
                                                             }, void 0, false, {
                                                                 fileName: "[project]/app/page.tsx",
-                                                                lineNumber: 468,
+                                                                lineNumber: 579,
                                                                 columnNumber: 21
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/app/page.tsx",
-                                                            lineNumber: 467,
+                                                            lineNumber: 578,
                                                             columnNumber: 19
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                                             children: [
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h4", {
-                                                                    className: "font-medium text-white",
+                                                                    className: "font-medium text-zinc-900 dark:text-white",
                                                                     children: activity.workout_type || 'Workout'
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/app/page.tsx",
-                                                                    lineNumber: 471,
+                                                                    lineNumber: 582,
                                                                     columnNumber: 21
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                                    className: "text-xs text-zinc-400",
+                                                                    className: "text-xs text-zinc-500 dark:text-zinc-400",
                                                                     children: [
                                                                         activity.weight ? `${activity.weight} kg x ${activity.reps || 0} reps` : activity.reps ? `${activity.reps} reps` : 'Completed',
                                                                         ' • ',
@@ -3028,19 +4136,19 @@ function Home() {
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/app/page.tsx",
-                                                                    lineNumber: 472,
+                                                                    lineNumber: 583,
                                                                     columnNumber: 21
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/app/page.tsx",
-                                                            lineNumber: 470,
+                                                            lineNumber: 581,
                                                             columnNumber: 19
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 466,
+                                                    lineNumber: 577,
                                                     columnNumber: 17
                                                 }, this),
                                                 activity.pr && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3048,57 +4156,58 @@ function Home() {
                                                     children: "New PR! 🏆"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 479,
+                                                    lineNumber: 590,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, i, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 465,
+                                            lineNumber: 576,
                                             columnNumber: 15
                                         }, this)),
                                     recentActivities.length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                        className: "text-sm text-zinc-400 text-center py-4",
+                                        className: "text-sm text-zinc-500 dark:text-zinc-400 text-center py-4",
                                         children: "No recent activity. Start crushing it!"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 486,
+                                        lineNumber: 597,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 463,
+                                lineNumber: 574,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 456,
+                        lineNumber: 567,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 408,
+                lineNumber: 506,
                 columnNumber: 7
             }, this),
             isWorkoutCoordinatorOpen && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$component$2f$WorkoutCoordinator$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                 onClose: ()=>setIsWorkoutCoordinatorOpen(false)
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 494,
+                lineNumber: 605,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 372,
+        lineNumber: 470,
         columnNumber: 5
     }, this);
 }
-_s(Home, "ZBjzhJhuU4SoiQDuPQecmH3dxO0=", false, function() {
+_s(Home, "O2ptvcJ1s0QwXZwtsyvey62IRXc=", false, function() {
     return [
+        __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$navigation$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRouter"],
         __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$context$2f$AuthContext$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useAuth"]
     ];
 });

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Target, TrendingUp, History, Loader2 } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Target, TrendingUp, History, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ShareButton from '../component/ShareButton';
 import { useAuth } from '../context/AuthContext';
-import { fetchWorkout } from '../lib/apiClient';
+import { fetchWorkout, fetchBodyStatsHistory } from '../lib/apiClient';
 
 interface PRRecord {
   exercise: string;
@@ -24,18 +24,90 @@ export default function ProgressPage() {
   const { token } = useAuth();
   const [prs, setPrs] = useState<PRRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
+  // --- BMI Feature State ---
+  const [bmiData, setBmiData] = useState<{date: Date, bmi: number}[]>([]);
+  const [bmiLoading, setBmiLoading] = useState(false);
+  const [bmiIntervalOffset, setBmiIntervalOffset] = useState(0); 
+
+  useEffect(() => {
+    if (!token) return;
+    const loadBMI = async () => {
+      setBmiLoading(true);
+      try {
+        const stats = await fetchBodyStatsHistory(token);
+        const calcBmi = stats.map((s: any) => {
+          const w = parseFloat(s.UserWeight);
+          const h = parseFloat(s.UserHeight) / 100;
+          const bmi = w / (h * h);
+          return {
+            date: new Date(s.SessionDate),
+            bmi: parseFloat(bmi.toFixed(1))
+          };
+        });
+        
+        calcBmi.sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
+        setBmiData(calcBmi);
+      } catch (err) {
+        console.error('Failed to fetch body stats:', err);
+      } finally {
+        setBmiLoading(false);
+      }
+    };
+    loadBMI();
+  }, [token]);
+
+  const { start, end, quarter, year } = useMemo(() => {
+    const now = new Date();
+    const currentQuarter = Math.floor(now.getMonth() / 3);
+    const targetQuarter = currentQuarter + bmiIntervalOffset;
+    
+    // Calculate year and quarter properly handling negative targetQuarter
+    const yearOffset = Math.floor(targetQuarter / 4);
+    const q = ((targetQuarter % 4) + 4) % 4;
+    const y = now.getFullYear() + yearOffset;
+    
+    const startMonth = q * 3;
+    const startDate = new Date(y, startMonth, 1);
+    
+    const endDate = new Date(y, startMonth + 3, 0, 23, 59, 59, 999);
+    
+    return { start: startDate, end: endDate, quarter: q + 1, year: y };
+  }, [bmiIntervalOffset]);
+
+  const filteredBmi = useMemo(() => {
+    return bmiData.filter(d => d.date >= start && d.date <= end);
+  }, [bmiData, start, end]);
+
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
-  // Generate lists for select dropdowns
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-  const currentYear = currentDate.getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const isNextMonthDisabled = selectedYear === currentDate.getFullYear() && selectedMonth === currentDate.getMonth();
+
+  const handleNextMonth = () => {
+    if (isNextMonthDisabled) return;
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -102,39 +174,39 @@ export default function ProgressPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Your Progress</h1>
-          <p className="text-zinc-400">Track and share your personal records.</p>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Your Progress</h1>
+          <p className="text-zinc-500 dark:text-zinc-400">Track and share your personal records.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-xl p-2">
-            <select 
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer"
+          <div className="flex items-center justify-between min-w-[200px] gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2">
+            <button 
+              onClick={handlePrevMonth} 
+              className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors"
+              aria-label="Previous Month"
             >
-              {months.map((month, index) => (
-                <option key={month} value={index}>{month}</option>
-              ))}
-            </select>
-            <select 
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-zinc-800 text-white border-none rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-pink-500 outline-none text-sm cursor-pointer"
+              <ChevronLeft className="w-5 h-5"/>
+            </button>
+            <span className="text-sm font-medium text-zinc-900 dark:text-white whitespace-nowrap">
+              {months[selectedMonth]} {selectedYear}
+            </span>
+            <button 
+              onClick={handleNextMonth} 
+              disabled={isNextMonthDisabled}
+              className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Next Month"
             >
-              {years.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+              <ChevronRight className="w-5 h-5"/>
+            </button>
           </div>
           <ShareButton />
         </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
           <div className="flex items-center gap-3 mb-6">
             <History className="text-pink-500" />
-            <h2 className="text-xl font-bold text-white">Latest Record</h2>
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Latest Record</h2>
           </div>
           <div className="space-y-4">
             {loading ? (
@@ -143,21 +215,21 @@ export default function ProgressPage() {
               </div>
             ) : prs.length > 0 ? (
               prs.map((pr, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-zinc-800/50 rounded-2xl border border-zinc-700/50">
+                <div key={i} className="flex items-center justify-between p-4 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-700/50">
                   <div>
-                    <h3 className="font-bold text-white mb-1">{pr.exercise}</h3>
-                    <p className="text-xs text-zinc-400">{pr.date}</p>
+                    <h3 className="font-bold text-zinc-900 dark:text-white mb-1">{pr.exercise}</h3>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{pr.date}</p>
                   </div>
                   <div className="text-right">
                     {pr.time ? (
                       <>
                         <p className="text-lg font-bold text-pink-400">{pr.weight}</p>
-                        <p className="text-xs text-zinc-400">duration</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">duration</p>
                       </>
                     ) : pr.weight && pr.weight !== '0 kg' ? (
                       <>
                         <p className="text-lg font-bold text-pink-400">{pr.weight}</p>
-                        <p className="text-xs text-zinc-400">{pr.reps} rep(s)</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{pr.reps} rep(s)</p>
                       </>
                     ) : (
                       <p className="text-lg font-bold text-pink-400">{pr.reps} rep(s)</p>
@@ -171,13 +243,108 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 h-fit h-[350px]">
-          <div className="flex items-center gap-3 mb-6">
-            <TrendingUp className="text-pink-500" />
-            <h2 className="text-xl font-bold text-white">Volume History</h2>
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 h-fit h-[350px] flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="text-pink-500" />
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">BMI History</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setBmiIntervalOffset(prev => prev - 1)} 
+                className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors"
+                aria-label="Previous Quarter"
+              >
+                <ChevronLeft className="w-5 h-5"/>
+              </button>
+              <span className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">
+                Q{quarter} {year}
+              </span>
+              <button 
+                onClick={() => setBmiIntervalOffset(prev => prev + 1)} 
+                className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                disabled={bmiIntervalOffset >= 0} 
+                aria-label="Next Quarter"
+              >
+                <ChevronRight className="w-5 h-5"/>
+              </button>
+            </div>
           </div>
-          <div className="h-64 flex items-center justify-center bg-zinc-800/30 rounded-2xl border border-zinc-800 border-dashed">
-            <p className="text-zinc-500 text-sm">Chart Visualization Area</p>
+          <div className="flex-1 bg-zinc-100/30 dark:bg-zinc-800/30 rounded-2xl border border-zinc-800/50 p-4 relative flex flex-col">
+            {bmiLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-pink-500" />
+              </div>
+            ) : (
+              <div className="w-full h-full flex flex-col relative">
+                <div className="flex-1 flex pl-6 pb-6 relative">
+                  {/* Y-axis Labels */}
+                  <div className="absolute left-0 top-0 bottom-6 w-6 flex flex-col justify-between items-start text-[10px] text-zinc-500">
+                    <span>{filteredBmi.length > 0 ? Math.ceil(Math.max(...filteredBmi.map(b => b.bmi)) + 1) : 30}</span>
+                    <span>{filteredBmi.length > 0 ? ((Math.ceil(Math.max(...filteredBmi.map(b => b.bmi)) + 1) + Math.floor(Math.max(0, Math.min(...filteredBmi.map(b => b.bmi)) - 1))) / 2).toFixed(1) : 25}</span>
+                    <span>{filteredBmi.length > 0 ? Math.floor(Math.max(0, Math.min(...filteredBmi.map(b => b.bmi)) - 1)) : 20}</span>
+                  </div>
+                  
+                  {/* Chart Area */}
+                  <div className="flex-1 relative border-l border-b border-zinc-700/50">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                      {filteredBmi.length > 0 && (
+                        <>
+                          <polyline 
+                            fill="none" 
+                            stroke="#ec4899" 
+                            strokeWidth="1" 
+                            points={filteredBmi.map((d) => {
+                              const minBmi = Math.floor(Math.max(0, Math.min(...filteredBmi.map(b => b.bmi)) - 1));
+                              const maxBmi = Math.ceil(Math.max(...filteredBmi.map(b => b.bmi)) + 1);
+                              const range = maxBmi - minBmi || 1;
+                              const quarterDuration = end.getTime() - start.getTime();
+                              const x = ((d.date.getTime() - start.getTime()) / quarterDuration) * 100;
+                              const y = 100 - ((d.bmi - minBmi) / range) * 100;
+                              return `${x},${y}`;
+                            }).join(' ')} 
+                          />
+                          {filteredBmi.map((d, i) => {
+                              const minBmi = Math.floor(Math.max(0, Math.min(...filteredBmi.map(b => b.bmi)) - 1));
+                              const maxBmi = Math.ceil(Math.max(...filteredBmi.map(b => b.bmi)) + 1);
+                              const range = maxBmi - minBmi || 1;
+                              const quarterDuration = end.getTime() - start.getTime();
+                              const x = ((d.date.getTime() - start.getTime()) / quarterDuration) * 100;
+                              const y = 100 - ((d.bmi - minBmi) / range) * 100;
+                              return (
+                                <g key={i} className="group">
+                                  <circle cx={x} cy={y} r="1" fill="#ec4899" className="opacity-80 transition-opacity" />
+                                  <circle cx={x} cy={y} r="4" fill="transparent" className="cursor-pointer" />
+                                  <text x={x} y={y - 4} fill="white" fontSize="3.5" textAnchor="middle" className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">{d.bmi}</text>
+                                </g>
+                              );
+                          })}
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                  
+                  {/* X-axis Labels */}
+                  <div className="absolute left-6 right-0 bottom-0 h-6 flex justify-between items-end text-[10px] text-zinc-500 px-1">
+                    {[0, 1, 2, 3].map((mIndex) => {
+                      let labelDate;
+                      if (mIndex === 3) {
+                        labelDate = end;
+                      } else {
+                        labelDate = new Date(start.getFullYear(), start.getMonth() + mIndex, 1);
+                      }
+                      const quarterDuration = end.getTime() - start.getTime();
+                      const xPercent = ((labelDate.getTime() - start.getTime()) / quarterDuration) * 100;
+                      return (
+                        <span key={mIndex} className="absolute transform -translate-x-1/2" style={{left: `${xPercent}%`}}>
+                          {labelDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
