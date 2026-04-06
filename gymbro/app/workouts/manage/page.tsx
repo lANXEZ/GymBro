@@ -309,27 +309,27 @@ export default function ManageWorkoutsPage() {
               </div>
             ) : (
               plans.map((plan) => (
-                <div key={plan.plan_id} className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm p-6 border border-zinc-200 dark:border-zinc-800 flex justify-between items-center transition-all hover:border-zinc-300 dark:border-zinc-700">
-                  <div>
+                <div key={plan.plan_id} className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm p-6 border border-zinc-200 dark:border-zinc-800 flex flex-row justify-between items-center transition-all hover:border-zinc-300 dark:border-zinc-700 gap-4">
+                  <div className="flex-1 pr-2">
                     <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{plan.plan_name}</h3>
                     {plan.description && <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">{plan.description}</p>}
                   </div>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0">
                     <Link 
                       href={`/workouts/create?planId=${plan.plan_id}`}
-                      className="text-pink-500 hover:text-pink-400 font-medium px-4 py-2 bg-pink-500/10 rounded-xl transition-colors"
+                      className="text-pink-500 hover:text-pink-400 font-medium px-4 py-2 bg-pink-500/10 rounded-xl transition-colors text-center"
                     >
                       Edit
                     </Link>
                     <button 
                       onClick={() => { setPlanToSend(plan.plan_id as number); setIsSendModalOpen(true); }}
-                      className="text-blue-500 hover:text-blue-400 font-medium px-4 py-2 bg-blue-500/10 rounded-xl transition-colors"
+                      className="text-blue-500 hover:text-blue-400 font-medium px-4 py-2 bg-blue-500/10 rounded-xl transition-colors text-center"
                     >
                       Send
                     </button>
                     <button 
                       onClick={() => handleDeletePlan(plan.plan_id)}
-                      className="text-red-500 hover:text-red-400 font-medium px-4 py-2 bg-red-500/10 rounded-xl transition-colors"
+                      className="text-red-500 hover:text-red-400 font-medium px-4 py-2 bg-red-500/10 rounded-xl transition-colors text-center"
                     >
                       Delete
                     </button>
@@ -351,8 +351,8 @@ export default function ManageWorkoutsPage() {
                 const exMuscle = exercise.muscle_group || "";
                 
                 return (
-                  <div key={exId} className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm p-6 border border-zinc-200 dark:border-zinc-800 flex justify-between items-center transition-all hover:border-zinc-300 dark:border-zinc-700">
-                    <div>
+                  <div key={exId} className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm p-6 border border-zinc-200 dark:border-zinc-800 flex flex-row justify-between items-center transition-all hover:border-zinc-300 dark:border-zinc-700 gap-4">
+                    <div className="flex-1 pr-2">
                       <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{exName}</h3>
                       {exMuscle && (
                         <span className="inline-block mt-2 text-xs font-semibold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-3 py-1 rounded-xl">
@@ -360,16 +360,16 @@ export default function ManageWorkoutsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
                       <button 
                         onClick={() => handleOpenEditExercise(exId!, exName || "")}
-                        className="text-pink-500 hover:text-pink-400 font-medium px-4 py-2 bg-pink-500/10 rounded-xl transition-colors"
+                        className="text-pink-500 hover:text-pink-400 font-medium px-4 py-2 bg-pink-500/10 rounded-xl transition-colors text-center"
                       >
                         Edit
                       </button>
                       <button 
                         onClick={() => handleDeleteExercise(exId!)}
-                        className="text-red-500 hover:text-red-400 font-medium px-4 py-2 bg-red-500/10 rounded-xl transition-colors"
+                        className="text-red-500 hover:text-red-400 font-medium px-4 py-2 bg-red-500/10 rounded-xl transition-colors text-center"
                       >
                         Delete
                       </button>

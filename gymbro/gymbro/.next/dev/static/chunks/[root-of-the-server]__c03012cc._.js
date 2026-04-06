@@ -320,6 +320,8 @@ __turbopack_context__.s([
     ()=>processPayment,
     "registerApi",
     ()=>registerApi,
+    "removeClient",
+    ()=>removeClient,
     "saveWorkout",
     ()=>saveWorkout,
     "unsubscribeApi",
@@ -582,6 +584,19 @@ async function inviteClient(token, client_id, username) {
     if (!res.ok) {
         const errorData = await res.json().catch(()=>({}));
         throw new Error(errorData.error || 'Failed to invite client');
+    }
+    return res.json();
+}
+async function removeClient(token, client_id) {
+    const res = await fetch(`${API_BASE_URL}/api/coach/client/${client_id}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(()=>({}));
+        throw new Error(errorData.error || 'Failed to remove client');
     }
     return res.json();
 }

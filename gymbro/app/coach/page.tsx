@@ -267,8 +267,8 @@ function CoachDashboardContent() {
                 <div className="flex items-center justify-center h-full text-zinc-500 dark:text-zinc-400">Loading client data...</div>
               ) : (
                 <>
-                  <div className="flex justify-between items-start mb-8">
-                    <div>
+                  <div className="flex flex-row justify-between items-start mb-8 gap-4">
+                    <div className="flex-1 pr-2">
                       <h3 className="text-2xl font-bold text-zinc-900 dark:text-white mb-1">
                         {clientProfile?.FirstName || selectedClient.FirstName} {clientProfile?.LastName || selectedClient.LastName}
                       </h3>
@@ -280,10 +280,10 @@ function CoachDashboardContent() {
                         </p>
                       ) : null}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
                       <button 
                         onClick={handleRemoveClient}
-                        className="flex items-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 px-4 py-2 rounded-xl font-medium transition-colors"
+                        className="flex items-center justify-center gap-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 px-4 py-2 rounded-xl font-medium transition-colors"
                       >
                         <UserMinus size={18} />
                         Remove Client
@@ -295,7 +295,7 @@ function CoachDashboardContent() {
                             router.push(`/workouts/create?clientId=${targetId}`);
                           }
                         }}
-                        className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-medium transition-colors"
+                        className="flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl font-medium transition-colors"
                       >
                         <Dumbbell size={18} />
                         Create Plan
