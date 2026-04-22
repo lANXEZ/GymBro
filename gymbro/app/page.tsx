@@ -1,14 +1,50 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Target, Flame, CalendarDays, ChevronRight, X, User as UserIcon, Lock, Mail, Calendar, UserPlus } from 'lucide-react';
+import { Target, Flame, CalendarDays, ChevronRight, X, User as UserIcon, Lock, Mail, Calendar, UserPlus, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import ShareButton from './component/ShareButton';
 import WorkoutCoordinator from './component/WorkoutCoordinator';
 import { useAuth } from './context/AuthContext';
 import { useRouter } from 'next/navigation';
 
-import { loginApi, registerApi, fetchWorkout, fetchRecentPlanId, fetchWorkoutPlans, changePasswordApi } from './lib/apiClient';
+import { loginApi, registerApi, fetchWorkout, fetchRecentPlanId, fetchWorkoutPlans, changePasswordApi, checkUsernameApi } from './lib/apiClient';
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder = '••••••••',
+  required = true,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
+      <input
+        type={show ? 'text' : 'password'}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all"
+        placeholder={placeholder}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+      >
+        {show ? <EyeOff size={20} /> : <Eye size={20} />}
+      </button>
+    </div>
+  );
+}
 
 export default function Home() {
   const router = useRouter();
@@ -29,8 +65,38 @@ export default function Home() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [birthdate, setBirthdate] = useState('');
-  
+  const [sex, setSex] = useState<'m' | 'f' | ''>('');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Debounced live username-collision check during signup
+  useEffect(() => {
+    if (authMode !== 'signup') {
+      setUsernameStatus('idle');
+      return;
+    }
+    const u = username.trim();
+    if (!u) {
+      setUsernameStatus('idle');
+      return;
+    }
+    setUsernameStatus('checking');
+    const handle = setTimeout(async () => {
+      try {
+        const { available } = await checkUsernameApi(u);
+        // Guard against race: only apply if the username still matches.
+        setUsername((curr) => {
+          if (curr.trim() === u) setUsernameStatus(available ? 'available' : 'taken');
+          return curr;
+        });
+      } catch {
+        // Network error — don't block the user; treat as idle.
+        setUsernameStatus('idle');
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [username, authMode]);
 
   // Dashboard states
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
@@ -184,6 +250,18 @@ export default function Home() {
     e.preventDefault();
     setErrorMsg('');
 
+    if (usernameStatus === 'taken') {
+      setErrorMsg('That username is already taken.');
+      return;
+    }
+    if (usernameStatus === 'checking') {
+      setErrorMsg('Still verifying your username — please wait.');
+      return;
+    }
+    if (!sex) {
+      setErrorMsg('Please select your sex.');
+      return;
+    }
     if (password !== confirmPassword) {
       setErrorMsg('Passwords do not match');
       return;
@@ -196,7 +274,8 @@ export default function Home() {
         email,
         firstName,
         lastName,
-        birthdate
+        birthdate,
+        sex
       });
 
       const token = data.auth_token;
@@ -305,17 +384,7 @@ export default function Home() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
-                        type="password" 
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all"
-                        placeholder="��������"
-                      />
-                    </div>
+                    <PasswordInput value={password} onChange={setPassword} />
                   </div>
                   <div className="flex justify-end">
                     <button type="button" onClick={() => setAuthMode('forgot_password')} className="text-sm text-pink-500 hover:text-pink-400 font-medium">Forgot/Change Password?</button>
@@ -353,25 +422,11 @@ export default function Home() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">New Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
-                        type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
-                        placeholder="••••••••"
-                      />
-                    </div>
+                    <PasswordInput value={password} onChange={setPassword} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Confirm New Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
-                        type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
-                        placeholder="••••••••"
-                      />
-                    </div>
+                    <PasswordInput value={confirmPassword} onChange={setConfirmPassword} />
                   </div>
                   <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-4 font-bold mt-4 transition-colors">
                     Change Password
@@ -406,20 +461,32 @@ export default function Home() {
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Username</label>
                     <div className="relative">
                       <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
+                      <input
                         type="text" required value={username} onChange={e => setUsername(e.target.value)}
                         className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
                         placeholder="johndoe123"
+                        aria-invalid={usernameStatus === 'taken'}
                       />
                     </div>
+                    {usernameStatus === 'taken' && (
+                      <p className="text-sm font-medium text-red-500">
+                        That username is already taken. Please choose a different one.
+                      </p>
+                    )}
+                    {usernameStatus === 'checking' && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Checking availability…</p>
+                    )}
+                    {usernameStatus === 'available' && (
+                      <p className="text-xs text-emerald-500">Username is available.</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Birthdate</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      
-                      <input 
+
+                      <input
                         type="date" required value={birthdate} onChange={e => setBirthdate(e.target.value)}
                         className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all [color-scheme:dark]"
                         max={new Date().toISOString().split('T')[0]}
@@ -428,30 +495,40 @@ export default function Home() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
-                        type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
-                        placeholder="••••••••"
-                      />
+                    <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Sex</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(['m', 'f'] as const).map((v) => (
+                        <button
+                          type="button"
+                          key={v}
+                          onClick={() => setSex(v)}
+                          className={`py-3 rounded-xl border font-medium transition-colors ${
+                            sex === v
+                              ? 'bg-pink-600 border-pink-500 text-white'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-pink-500/50'
+                          }`}
+                        >
+                          {v === 'm' ? 'Male' : 'Female'}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Confirm Password</label>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
-                      <input 
-                        type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all"
-                        placeholder="••••••••"
-                      />
-                    </div>
+                    <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Password</label>
+                    <PasswordInput value={password} onChange={setPassword} />
                   </div>
 
-                  <button type="submit" className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-4 font-bold mt-6 transition-colors">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Confirm Password</label>
+                    <PasswordInput value={confirmPassword} onChange={setConfirmPassword} />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={usernameStatus === 'taken' || usernameStatus === 'checking' || !sex}
+                    className="w-full bg-pink-600 hover:bg-pink-500 disabled:bg-zinc-400 disabled:cursor-not-allowed dark:disabled:bg-zinc-700 text-white rounded-xl py-4 font-bold mt-6 transition-colors"
+                  >
                     Confirm Registration
                   </button>
                   <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 mt-4">
@@ -553,7 +630,26 @@ export default function Home() {
               </>
             ) : (
               <div className="text-center py-6">
-                <p className="text-zinc-500 dark:text-zinc-400 mb-4">No plan assigned for today or currently active.</p>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-4">
+                  No plan assigned for today or currently{' '}
+                  <span className="relative inline-block group align-baseline">
+                    <button
+                      type="button"
+                      className="text-pink-500 hover:text-pink-400 underline underline-offset-2 decoration-dotted font-medium focus:outline-none"
+                      aria-describedby="active-tooltip"
+                    >
+                      active
+                    </button>
+                    <span
+                      id="active-tooltip"
+                      role="tooltip"
+                      className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-zinc-900 dark:bg-zinc-800 text-zinc-100 text-xs px-3 py-2 border border-zinc-700 shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                    >
+                      To activate a plan, start an exercise session with it at least once.
+                    </span>
+                  </span>
+                  .
+                </p>
                 <Link href="/workouts">
                   <button className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white px-5 py-2 rounded-full text-sm font-medium transition-colors">
                     Find a Plan

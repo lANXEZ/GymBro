@@ -49,7 +49,8 @@ function CreatePlanContent() {
   const [newExUrl, setNewExUrl] = useState('');
   const [newExRecordType, setNewExRecordType] = useState('weight'); // weight / time
   const [newExAccessibility, setNewExAccessibility] = useState('public'); // public / private
-  const [newExProgressType, setNewExProgressType] = useState('increase'); // increase / decrease
+  const [newExProgressType, setNewExProgressType] = useState<'increase' | 'decrease'>('increase'); // increase / decrease
+  const [newExSuggestSetAmount, setNewExSuggestSetAmount] = useState('');
   const [creatingExercise, setCreatingExercise] = useState(false);
 
   const [savingPlan, setSavingPlan] = useState(false);
@@ -135,14 +136,14 @@ function CreatePlanContent() {
   };
 
   const handleCreateExercise = async () => {
-    if (!newExDesc || !newExSteps) {
-      alert("Description and Steps are required!");
+    if (!newExDesc) {
+      alert("Description is required!");
       return;
     }
     setCreatingExercise(true);
     try {
       const isEdit = editingExMoveId !== null;
-      const url = isEdit 
+      const url = isEdit
         ? `${API_BASE_URL}/api/workout/exercise/${editingExMoveId}`
         : `${API_BASE_URL}/api/workout/create-exercise`;
       const method = isEdit ? 'PUT' : 'POST';
@@ -155,12 +156,13 @@ function CreatePlanContent() {
         },
         body: JSON.stringify({
           description: newExDesc,
-          steps: newExSteps,
+          steps: newExSteps || null,
           caution: newExCaution,
           url: newExUrl,
           record_type: newExRecordType,
           accessibility: newExAccessibility,
-          progress_type: newExProgressType
+          progress_type: newExProgressType,
+          suggest_set_amount: newExSuggestSetAmount.trim() || null
         })
       });
       if (res.ok) {
@@ -192,6 +194,7 @@ function CreatePlanContent() {
         setNewExSteps('');
         setNewExCaution('');
         setNewExUrl('');
+        setNewExSuggestSetAmount('');
       } else {
         const err = await res.json();
         alert(err.error || "Failed to save exercise");
@@ -234,10 +237,11 @@ function CreatePlanContent() {
       setNewExDesc(ex.Description);
       setNewExSteps(ex.Steps || '');
       setNewExRecordType(ex.RecordType || 'weight');
-      setNewExProgressType(ex.ProgressType || 'increase');
+      setNewExProgressType(((ex.ProgressType || 'increase') === 'decrease' ? 'decrease' : 'increase'));
       setNewExCaution(ex.Caution || '');
       setNewExUrl(ex.URL || '');
       setNewExAccessibility(ex.Accessibility || 'public');
+      setNewExSuggestSetAmount((ex as any).SuggestSetAmount || '');
       setIsCreateModalOpen(true);
   };
 
@@ -563,8 +567,8 @@ const filteredExercises = (publicExercises || []).filter(ex =>
                 />
               </div>
               <div>
-                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Steps *</label>
-                <textarea 
+                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Steps (Optional)</label>
+                <textarea
                   value={newExSteps} onChange={e => setNewExSteps(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500 min-h-[80px]"
                   placeholder="1. Lie on bench... 2. Unrack bar..."
@@ -586,6 +590,15 @@ const filteredExercises = (publicExercises || []).filter(ex =>
                   value={newExUrl} onChange={e => setNewExUrl(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500"
                   placeholder="https://youtube.com/..."
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Suggested set amount (Optional)</label>
+                <input
+                  type="text"
+                  value={newExSuggestSetAmount} onChange={e => setNewExSuggestSetAmount(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500"
+                  placeholder="eg. 3-5 sets."
                 />
               </div>
 

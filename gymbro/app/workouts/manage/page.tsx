@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { X, Loader2 } from 'lucide-react';
 import { useAuth } from "../../context/AuthContext";
-import { fetchWorkoutPlans, API_BASE_URL } from "../../lib/apiClient";
+import { fetchWorkoutPlans, API_BASE_URL, sendExerciseApi } from "../../lib/apiClient";
 
 interface Plan {
   plan_id: string | number;
@@ -38,6 +38,13 @@ export default function ManageWorkoutsPage() {
   const [sendError, setSendError] = useState('');
   const [sendSuccess, setSendSuccess] = useState('');
 
+  const [isSendExModalOpen, setIsSendExModalOpen] = useState(false);
+  const [exerciseToSend, setExerciseToSend] = useState<string | number | null>(null);
+  const [sendExReceiverId, setSendExReceiverId] = useState('');
+  const [sendExReceiverUsername, setSendExReceiverUsername] = useState('');
+  const [sendExError, setSendExError] = useState('');
+  const [sendExSuccess, setSendExSuccess] = useState('');
+
   // Edit Exercise Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExId, setEditingExId] = useState<string | number | null>(null);
@@ -47,7 +54,8 @@ export default function ManageWorkoutsPage() {
   const [editExUrl, setEditExUrl] = useState('');
   const [editExRecordType, setEditExRecordType] = useState('weight'); // weight / time
   const [editExAccessibility, setEditExAccessibility] = useState('public'); // public / private
-  const [editExProgressType, setEditExProgressType] = useState('increase'); // increase / decrease
+  const [editExProgressType, setEditExProgressType] = useState<'increase' | 'decrease'>('increase');
+  const [editExSuggestSetAmount, setEditExSuggestSetAmount] = useState('');
   const [savingExercise, setSavingExercise] = useState(false);
 
   useEffect(() => {
@@ -141,6 +149,26 @@ export default function ManageWorkoutsPage() {
     }
   };
 
+  const handleSendExercise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!exerciseToSend || !sendExReceiverId || !sendExReceiverUsername || !token) return;
+    setSendExError('');
+    setSendExSuccess('');
+    try {
+      await sendExerciseApi(token, exerciseToSend, sendExReceiverId, sendExReceiverUsername);
+      setSendExSuccess('Exercise sent successfully!');
+      setTimeout(() => {
+        setIsSendExModalOpen(false);
+        setExerciseToSend(null);
+        setSendExReceiverId('');
+        setSendExReceiverUsername('');
+        setSendExSuccess('');
+      }, 2000);
+    } catch (err: any) {
+      setSendExError(err.message || 'Failed to send exercise');
+    }
+  };
+
   const handleOpenEditExercise = async (id: string | number, currentName: string) => {
     if (!token) return;
     setEditingExId(id);
@@ -148,6 +176,7 @@ export default function ManageWorkoutsPage() {
     setEditExSteps('Loading...');
     setEditExCaution('');
     setEditExUrl('');
+    setEditExSuggestSetAmount('');
     setIsEditModalOpen(true);
     setSavingExercise(false);
 
@@ -162,7 +191,9 @@ export default function ManageWorkoutsPage() {
         setEditExUrl(data.URL || data.url || "");
         setEditExRecordType(data.RecordType || data.record_type || "weight");
         setEditExAccessibility(data.Accessibility || data.accessibility || "public");
-        setEditExProgressType(data.ProgressType || data.progress_type || "increase");
+        const rawProg = (data.ProgressType || data.progress_type || 'increase').toString().toLowerCase();
+        setEditExProgressType(rawProg === 'decrease' ? 'decrease' : 'increase');
+        setEditExSuggestSetAmount(data.SuggestSetAmount || data.suggest_set_amount || "");
       } else {
         setEditExSteps('Failed to load steps.');
       }
@@ -174,8 +205,8 @@ export default function ManageWorkoutsPage() {
 
   const handleUpdateExercise = async () => {
     if (!token || !editingExId) return;
-    if (!editExDesc || !editExSteps) {
-      alert("Description and Steps are required!");
+    if (!editExDesc) {
+      alert("Description is required!");
       return;
     }
 
@@ -183,12 +214,13 @@ export default function ManageWorkoutsPage() {
     try {
       const currentEx = {
         description: editExDesc,
-        steps: editExSteps,
+        steps: editExSteps || null,
         caution: editExCaution,
         url: editExUrl,
         record_type: editExRecordType,
         accessibility: editExAccessibility,
-        progress_type: editExProgressType
+        progress_type: editExProgressType,
+        suggest_set_amount: editExSuggestSetAmount.trim() || null
       };
       
       const response = await fetch(`${API_BASE_URL}/api/workout/exercise/${editingExId}`, {
@@ -361,13 +393,19 @@ export default function ManageWorkoutsPage() {
                       )}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                      <button 
+                      <button
+                        onClick={() => { setExerciseToSend(exId!); setIsSendExModalOpen(true); }}
+                        className="text-blue-500 hover:text-blue-400 font-medium px-4 py-2 bg-blue-500/10 rounded-xl transition-colors text-center"
+                      >
+                        Send
+                      </button>
+                      <button
                         onClick={() => handleOpenEditExercise(exId!, exName || "")}
                         className="text-pink-500 hover:text-pink-400 font-medium px-4 py-2 bg-pink-500/10 rounded-xl transition-colors text-center"
                       >
                         Edit
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteExercise(exId!)}
                         className="text-red-500 hover:text-red-400 font-medium px-4 py-2 bg-red-500/10 rounded-xl transition-colors text-center"
                       >
@@ -426,6 +464,50 @@ export default function ManageWorkoutsPage() {
         </div>
       )}
 
+      {/* Send Exercise Modal */}
+      {isSendExModalOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 w-full max-w-md relative">
+            <button onClick={() => setIsSendExModalOpen(false)} className="absolute right-4 top-4 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white">
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-4">Send Exercise to User</h3>
+            {sendExError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-4 text-sm">{sendExError}</div>}
+            {sendExSuccess && <div className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl mb-4 text-sm">{sendExSuccess}</div>}
+            <form onSubmit={handleSendExercise} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">Receiver User ID</label>
+                <input
+                  type="text"
+                  required
+                  value={sendExReceiverId}
+                  onChange={(e) => setSendExReceiverId(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500"
+                  placeholder="e.g. 123"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-2">Receiver Username</label>
+                <input
+                  type="text"
+                  required
+                  value={sendExReceiverUsername}
+                  onChange={(e) => setSendExReceiverUsername(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:outline-none focus:border-pink-500"
+                  placeholder="e.g. bro_lifter"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-3 font-semibold transition-colors mt-6"
+              >
+                Send Exercise
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Edit Exercise Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -451,7 +533,7 @@ export default function ManageWorkoutsPage() {
                 />
               </div>
               <div>
-                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Steps *</label>
+                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Steps (Optional)</label>
                 <textarea 
                   value={editExSteps} onChange={e => setEditExSteps(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500 min-h-20"
@@ -474,6 +556,15 @@ export default function ManageWorkoutsPage() {
                   value={editExUrl} onChange={e => setEditExUrl(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500"
                   placeholder="https://youtube.com/..."
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 dark:text-zinc-400 text-xs font-medium mb-1">Suggested set amount (Optional)</label>
+                <input
+                  type="text"
+                  value={editExSuggestSetAmount} onChange={e => setEditExSuggestSetAmount(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white text-sm focus:outline-none focus:border-pink-500"
+                  placeholder="eg. 3-5 sets."
                 />
               </div>
 

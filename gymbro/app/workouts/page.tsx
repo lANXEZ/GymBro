@@ -657,16 +657,24 @@ export default function WorkoutsPage() {
                     <p className="text-zinc-700 dark:text-zinc-200">{selectedExercise.Description}</p>
                   </div>
                   
-                  <div>
-                    <h4 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-2">Steps</h4>
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50 space-y-2">
-                      {selectedExercise.Steps.split(/(?=\d+\.\s)/).filter(s => s.trim()).map((step, idx) => (
-                        <p key={idx} className="text-zinc-600 dark:text-zinc-300">
-                          {step.trim()}
-                        </p>
-                      ))}
+                  {selectedExercise.Steps && (
+                    <div>
+                      <h4 className="text-sm font-medium text-zinc-500 uppercase tracking-wider mb-2">Steps</h4>
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/50 space-y-2">
+                        {selectedExercise.Steps.split(/(?=\d+\.\s)/).filter(s => s.trim()).map((step, idx) => (
+                          <p key={idx} className="text-zinc-600 dark:text-zinc-300">
+                            {step.trim()}
+                          </p>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {(selectedExercise as any).SuggestSetAmount && (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400 italic">
+                      Suggested set amount: {(selectedExercise as any).SuggestSetAmount}
+                    </p>
+                  )}
                   
                   {selectedExercise.Caution && (
                     <div>

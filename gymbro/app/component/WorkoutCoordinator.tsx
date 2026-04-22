@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../lib/apiClient';
+import { API_BASE_URL, checkOverloadableApi } from '../lib/apiClient';
 
 type WorkoutStep = 'SELECT_PLAN' | 'SELECT_DAY' | 'RECORD_BODY_STATS' | 'SELECT_EXERCISE' | 'ACTIVE_WORKOUT';
 
@@ -194,13 +194,20 @@ export default function WorkoutCoordinator({ onClose }: WorkoutCoordinatorProps)
           {exercisesForDay.length > 0 ? (
             <div className="space-y-3">
               {exercisesForDay.map((ex: any, i: number) => (
-                <div key={i} className="bg-zinc-800/80 p-4 rounded-xl flex items-center justify-between border border-zinc-700/50 hover:border-zinc-600 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400 font-bold text-sm">
-                      {i + 1}
+                <div key={i} className="bg-zinc-800/80 p-4 rounded-xl border border-zinc-700/50 hover:border-zinc-600 transition">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-400 font-bold text-sm">
+                        {i + 1}
+                      </div>
+                      <span className="font-semibold text-white">{ex.name}</span>
                     </div>
-                    <span className="font-semibold text-white">{ex.name}</span>
                   </div>
+                  {ex.suggest_set_amount && (
+                    <p className="text-xs text-zinc-500 italic mt-2 ml-11">
+                      Suggested set amount: {ex.suggest_set_amount}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -507,6 +514,8 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
   // Struggle detection state
   const [showStruggleAlert, setShowStruggleAlert] = useState(false);
   const [isStruggling, setIsStruggling] = useState(false);
+  const [showOverloadAlert, setShowOverloadAlert] = useState(false);
+  const [overloadProgressType, setOverloadProgressType] = useState<string>('increase');
 
   // Exercise record states
   const [weight, setWeight] = useState(0); // kg/lbs
@@ -550,10 +559,28 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
         const struggleRes = await fetch(`${API_BASE_URL}/api/workout/is-struggle?workout_type=${encodeURIComponent(exercise.name)}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        let struggling = false;
         if (struggleRes.ok) {
           const struggleData = await struggleRes.json();
-          setIsStruggling(struggleData.struggling);
-          if (struggleData.struggling) setShowStruggleAlert(true);
+          struggling = !!struggleData.struggling;
+          setIsStruggling(struggling);
+          if (struggling) setShowStruggleAlert(true);
+        }
+
+        // 2b. If not struggling, check progressive overload
+        if (!struggling) {
+          try {
+            const exMoveId = exercise.ex_move_id || exercise.ExMoveID;
+            if (exMoveId) {
+              const overload = await checkOverloadableApi(token, exMoveId);
+              if (overload?.overloadable) {
+                setOverloadProgressType(overload.progress_type || 'increase');
+                setShowOverloadAlert(true);
+              }
+            }
+          } catch (e) {
+            console.warn('Overload check failed', e);
+          }
         }
         
         // 3. Fetch last record
@@ -657,6 +684,27 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
         <span className="text-pink-500 font-bold tracking-widest text-sm uppercase mb-1 block">Set {setCount}</span>
         <h2 className="text-3xl font-bold text-white leading-tight">{exercise.name}</h2>
       </div>
+
+      {/* Progressive Overload Alert */}
+      {showOverloadAlert && !showStruggleAlert && (
+        <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 relative">
+          <button
+            onClick={() => setShowOverloadAlert(false)}
+            className="absolute top-2 right-2 p-2 text-indigo-400/50 hover:text-indigo-400"
+          >
+            ✕
+          </button>
+          <div className="flex gap-3">
+            <span className="text-xl">💪</span>
+            <div>
+              <h4 className="font-bold text-indigo-400 mb-1">Ready to level up?</h4>
+              <p className="text-indigo-200/80 text-sm leading-relaxed">
+                Your recent sessions have been steady. Consider {overloadProgressType === 'decrease' ? 'scaling down a notch' : 'pushing a little harder'} to keep progressing.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Struggle Alert */}
       {showStruggleAlert && (
@@ -767,7 +815,12 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
 
       {/* Confirmation Actions */}
       <div className="flex flex-col gap-3 mt-4">
-        <button 
+        {selectedExercise?.suggest_set_amount && (
+          <p className="text-xs text-zinc-500 italic text-center">
+            Suggested set amount: {selectedExercise.suggest_set_amount}
+          </p>
+        )}
+        <button
           onClick={() => handleSaveSet(false)}
           disabled={isSaving}
           className="p-5 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 hover:border-pink-500 hover:text-white transition-all text-zinc-300 font-bold rounded-2xl flex items-center justify-center gap-2"

@@ -1,6 +1,65 @@
 ﻿export const API_BASE_URL = '';
 
 /**
+ * Global 401 interceptor.
+ *
+ * Any fetch call that carries an `Authorization: Bearer <token>` header and
+ * receives a 401 dispatches a window-level `auth:expired` event. The app's
+ * auth layer listens for this to show a re-login prompt. Unauthenticated
+ * 401s (e.g. wrong password on /api/login) are NOT intercepted.
+ */
+if (typeof window !== 'undefined' && !(window as any).__gbFetchPatched) {
+  (window as any).__gbFetchPatched = true;
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const res = await origFetch(input as any, init);
+    if (res.status === 401) {
+      const headers: any = init?.headers || {};
+      const hasAuth = headers?.Authorization
+        || headers?.authorization
+        || (headers instanceof Headers && (headers.get('Authorization') || headers.get('authorization')));
+      if (hasAuth) {
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+      }
+    }
+    return res;
+  };
+}
+
+export async function checkUsernameApi(username: string): Promise<{ available: boolean }> {
+  const res = await fetch(`${API_BASE_URL}/api/user/check-username?username=${encodeURIComponent(username)}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to check username');
+  }
+  return res.json();
+}
+
+export async function sendExerciseApi(token: string, exMoveId: number, receiver_id: number, receiver_username: string) {
+  const res = await fetch(`${API_BASE_URL}/api/workout/exercise/${exMoveId}/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ receiver_id, receiver_username })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to send exercise');
+  }
+  return res.json();
+}
+
+export async function checkOverloadableApi(token: string, ex_move_id: number): Promise<{ overloadable: boolean; progress_type?: string; reason?: string }> {
+  const res = await fetch(`${API_BASE_URL}/api/workout/is-overloadable?ex_move_id=${ex_move_id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to check overload');
+  }
+  return res.json();
+}
+
+/**
  * 1. Authentication
  */
 export async function loginApi(username: string, password: string) {
