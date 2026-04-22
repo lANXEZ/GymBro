@@ -418,6 +418,7 @@ export default function Home() {
                     <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Birthdate</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
+                      
                       <input 
                         type="date" required value={birthdate} onChange={e => setBirthdate(e.target.value)}
                         className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-pink-500 transition-all [color-scheme:dark]"

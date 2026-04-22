@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"E:/Work/VSCode Repo/GymBro\" ls-files --others --exclude-standard gymbro/)",
+      "Bash(git -C \"E:/Work/VSCode Repo/GymBro\" ls-files gymbro/)",
+      "Bash(git -C \"E:/Work/VSCode Repo/GymBro\" ls-files gymbro/app/out.css gymbro/gymbro/)"
+    ]
+  }
+}
