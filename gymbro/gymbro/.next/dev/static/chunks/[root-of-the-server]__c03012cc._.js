@@ -27,6 +27,7 @@ function AuthProvider({ children }) {
     const [token, setToken] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [isMounted, setIsMounted] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [showExpired, setShowExpired] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "AuthProvider.useEffect": ()=>{
             setIsMounted(true);
@@ -43,8 +44,26 @@ function AuthProvider({ children }) {
                     console.error("Failed to parse stored user", e);
                 }
             }
+            const onExpired = {
+                "AuthProvider.useEffect.onExpired": ()=>setShowExpired(true)
+            }["AuthProvider.useEffect.onExpired"];
+            window.addEventListener('auth:expired', onExpired);
+            return ({
+                "AuthProvider.useEffect": ()=>window.removeEventListener('auth:expired', onExpired)
+            })["AuthProvider.useEffect"];
         }
     }["AuthProvider.useEffect"], []);
+    const handleExpiredConfirm = ()=>{
+        setShowExpired(false);
+        // Perform logout synchronously
+        setIsLoggedIn(false);
+        setToken(null);
+        setUser(null);
+        localStorage.setItem('isLoggedIn', 'false');
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        if ("TURBOPACK compile-time truthy", 1) window.location.href = '/';
+    };
     const login = (newToken, newUser)=>{
         setIsLoggedIn(true);
         setToken(newToken);
@@ -70,14 +89,57 @@ function AuthProvider({ children }) {
             login,
             logout
         },
-        children: children
-    }, void 0, false, {
+        children: [
+            children,
+            showExpired && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                className: "fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 w-full max-w-md text-center",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+                            className: "text-xl font-bold mb-2 text-zinc-900 dark:text-white",
+                            children: "Session expired"
+                        }, void 0, false, {
+                            fileName: "[project]/app/context/AuthContext.tsx",
+                            lineNumber: 96,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-sm text-zinc-500 dark:text-zinc-400 mb-6",
+                            children: "Your sign-in has expired. Please log in again to continue."
+                        }, void 0, false, {
+                            fileName: "[project]/app/context/AuthContext.tsx",
+                            lineNumber: 97,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$gymbro$2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: handleExpiredConfirm,
+                            className: "w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-3 font-bold transition-colors",
+                            children: "Log in again"
+                        }, void 0, false, {
+                            fileName: "[project]/app/context/AuthContext.tsx",
+                            lineNumber: 100,
+                            columnNumber: 13
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/app/context/AuthContext.tsx",
+                    lineNumber: 95,
+                    columnNumber: 11
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/app/context/AuthContext.tsx",
+                lineNumber: 94,
+                columnNumber: 9
+            }, this)
+        ]
+    }, void 0, true, {
         fileName: "[project]/app/context/AuthContext.tsx",
-        lineNumber: 73,
+        lineNumber: 91,
         columnNumber: 5
     }, this);
 }
-_s(AuthProvider, "dIVtdbBkDc3IZJ3Ca2NwgHeKQb4=");
+_s(AuthProvider, "pSSof/5A0ECCqS4vukuu0eZdlNo=");
 _c = AuthProvider;
 function useAuth() {
     _s1();
@@ -288,6 +350,10 @@ __turbopack_context__.s([
     ()=>changePasswordApi,
     "checkIsStruggling",
     ()=>checkIsStruggling,
+    "checkOverloadableApi",
+    ()=>checkOverloadableApi,
+    "checkUsernameApi",
+    ()=>checkUsernameApi,
     "deleteAdminExerciseApi",
     ()=>deleteAdminExerciseApi,
     "fetchAllPublicExercisesApi",
@@ -324,6 +390,8 @@ __turbopack_context__.s([
     ()=>removeClient,
     "saveWorkout",
     ()=>saveWorkout,
+    "sendExerciseApi",
+    ()=>sendExerciseApi,
     "unsubscribeApi",
     ()=>unsubscribeApi,
     "updateAdminExerciseApi",
@@ -334,6 +402,66 @@ __turbopack_context__.s([
     ()=>upgradeSubscription
 ]);
 const API_BASE_URL = '';
+/**
+ * Global 401 interceptor.
+ *
+ * Any fetch call that carries an `Authorization: Bearer <token>` header and
+ * receives a 401 dispatches a window-level `auth:expired` event. The app's
+ * auth layer listens for this to show a re-login prompt. Unauthenticated
+ * 401s (e.g. wrong password on /api/login) are NOT intercepted.
+ */ if (("TURBOPACK compile-time value", "object") !== 'undefined' && !window.__gbFetchPatched) {
+    window.__gbFetchPatched = true;
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async (input, init)=>{
+        const res = await origFetch(input, init);
+        if (res.status === 401) {
+            const headers = init?.headers || {};
+            const hasAuth = headers?.Authorization || headers?.authorization || headers instanceof Headers && (headers.get('Authorization') || headers.get('authorization'));
+            if (hasAuth) {
+                window.dispatchEvent(new CustomEvent('auth:expired'));
+            }
+        }
+        return res;
+    };
+}
+async function checkUsernameApi(username) {
+    const res = await fetch(`${API_BASE_URL}/api/user/check-username?username=${encodeURIComponent(username)}`);
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to check username');
+    }
+    return res.json();
+}
+async function sendExerciseApi(token, exMoveId, receiver_id, receiver_username) {
+    const res = await fetch(`${API_BASE_URL}/api/workout/exercise/${exMoveId}/send`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            receiver_id,
+            receiver_username
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to send exercise');
+    }
+    return res.json();
+}
+async function checkOverloadableApi(token, ex_move_id) {
+    const res = await fetch(`${API_BASE_URL}/api/workout/is-overloadable?ex_move_id=${ex_move_id}`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Failed to check overload');
+    }
+    return res.json();
+}
 async function loginApi(username, password) {
     const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',

@@ -815,9 +815,9 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
 
       {/* Confirmation Actions */}
       <div className="flex flex-col gap-3 mt-4">
-        {selectedExercise?.suggest_set_amount && (
+        {exercise?.suggest_set_amount && (
           <p className="text-xs text-zinc-500 italic text-center">
-            Suggested set amount: {selectedExercise.suggest_set_amount}
+            Suggested set amount: {exercise.suggest_set_amount}
           </p>
         )}
         <button
