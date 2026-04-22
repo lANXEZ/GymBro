@@ -409,17 +409,22 @@ export default function WorkoutsPage() {
                               </h4>
                               <div className="space-y-1">
                                 {dayExercises.map((ex, idx) => (
-                                  <div 
-                                    key={ex.ex_move_id || idx} 
+                                  <div
+                                    key={ex.ex_move_id || idx}
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
-                                      isToday 
-                                        ? 'bg-pink-800/40 text-pink-50 hover:bg-pink-700/50' 
+                                      isToday
+                                        ? 'bg-pink-800/40 text-pink-50 hover:bg-pink-700/50'
                                         : 'bg-pink-950/50 text-pink-100 hover:text-zinc-900 dark:text-white hover:bg-pink-800/50'
                                     }`}
                                   >
                                     <span>{ex.name}</span>
-                                    <Info size={14} className={isToday ? "text-pink-300" : "text-pink-400"} />
+                                    <span className="flex items-center gap-2">
+                                      {(ex as any).suggest_set_amount && (
+                                        <span className="text-xs italic opacity-40">{(ex as any).suggest_set_amount} sets</span>
+                                      )}
+                                      <Info size={14} className={isToday ? "text-pink-300" : "text-pink-400"} />
+                                    </span>
                                   </div>
                                 ))}
                               </div>
@@ -506,8 +511,8 @@ export default function WorkoutsPage() {
                               </h4>
                               <div className="space-y-1">
                                 {dayExercises.map((ex, idx) => (
-                                  <div 
-                                    key={ex.ex_move_id || idx} 
+                                  <div
+                                    key={ex.ex_move_id || idx}
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
                                       isToday
@@ -516,7 +521,12 @@ export default function WorkoutsPage() {
                                     }`}
                                   >
                                     <span>{ex.name}</span>
-                                    <Info size={14} className={isToday ? "text-pink-500/70" : "text-zinc-500"} />
+                                    <span className="flex items-center gap-2">
+                                      {(ex as any).suggest_set_amount && (
+                                        <span className="text-xs italic opacity-40">{(ex as any).suggest_set_amount} sets</span>
+                                      )}
+                                      <Info size={14} className={isToday ? "text-pink-500/70" : "text-zinc-500"} />
+                                    </span>
                                   </div>
                                 ))}
                               </div>
@@ -598,8 +608,8 @@ export default function WorkoutsPage() {
                               </h4>
                               <div className="space-y-1">
                                 {dayExercises.map((ex, idx) => (
-                                  <div 
-                                    key={ex.ex_move_id || idx} 
+                                  <div
+                                    key={ex.ex_move_id || idx}
                                     onClick={(e) => { e.stopPropagation(); handleExerciseClick(ex.ex_move_id); }}
                                     className={`p-2 rounded-lg text-sm flex justify-between items-center transition-colors cursor-pointer ${
                                       isToday
@@ -608,7 +618,12 @@ export default function WorkoutsPage() {
                                     }`}
                                   >
                                     <span>{ex.name}</span>
-                                    <Info size={14} className={isToday ? "text-pink-500/70" : "text-zinc-500"} />
+                                    <span className="flex items-center gap-2">
+                                      {(ex as any).suggest_set_amount && (
+                                        <span className="text-xs italic opacity-40">{(ex as any).suggest_set_amount} sets</span>
+                                      )}
+                                      <Info size={14} className={isToday ? "text-pink-500/70" : "text-zinc-500"} />
+                                    </span>
                                   </div>
                                 ))}
                               </div>

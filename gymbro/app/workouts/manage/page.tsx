@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Search } from 'lucide-react';
 import { useAuth } from "../../context/AuthContext";
 import { fetchWorkoutPlans, API_BASE_URL, sendExerciseApi } from "../../lib/apiClient";
 
@@ -46,6 +46,8 @@ export default function ManageWorkoutsPage() {
   const [sendExSuccess, setSendExSuccess] = useState('');
 
   // Edit Exercise Modal State
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExId, setEditingExId] = useState<string | number | null>(null);
   const [editExDesc, setEditExDesc] = useState('');
@@ -279,6 +281,16 @@ export default function ManageWorkoutsPage() {
     }
   };
 
+  const q = searchQuery.toLowerCase().trim();
+  const filteredPlans = useMemo(() =>
+    q ? plans.filter(p => p.plan_name.toLowerCase().includes(q)) : plans,
+    [plans, q]
+  );
+  const filteredExercises = useMemo(() =>
+    q ? exercises.filter(e => (e.Description || e.name || '').toLowerCase().includes(q)) : exercises,
+    [exercises, q]
+  );
+
   if (!user) {
     return (
       <div className="max-w-4xl mx-auto p-6 flex justify-center items-center h-64">
@@ -310,7 +322,7 @@ export default function ManageWorkoutsPage() {
               ? "border-pink-500 text-pink-500"
               : "border-transparent text-zinc-500 hover:text-zinc-600 dark:text-zinc-300"
           }`}
-          onClick={() => setActiveTab("plans")}
+          onClick={() => { setActiveTab("plans"); setSearchQuery(''); }}
         >
           My Plans
         </button>
@@ -320,10 +332,27 @@ export default function ManageWorkoutsPage() {
               ? "border-pink-500 text-pink-500"
               : "border-transparent text-zinc-500 hover:text-zinc-600 dark:text-zinc-300"
           }`}
-          onClick={() => setActiveTab("exercises")}
+          onClick={() => { setActiveTab("exercises"); setSearchQuery(''); }}
         >
           My Exercises
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          placeholder={activeTab === 'plans' ? 'Search plans...' : 'Search exercises...'}
+          className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-10 pr-4 py-3 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-pink-500 transition-colors"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -335,12 +364,12 @@ export default function ManageWorkoutsPage() {
            </div>
         ) : activeTab === "plans" ? (
           <>
-            {plans.length === 0 ? (
+            {filteredPlans.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-12 text-center">
-                <p className="text-zinc-500 text-lg">No plans found. Create one to get started!</p>
+                <p className="text-zinc-500 text-lg">{q ? `No plans matching "${searchQuery}"` : 'No plans found. Create one to get started!'}</p>
               </div>
             ) : (
-              plans.map((plan) => (
+              filteredPlans.map((plan) => (
                 <div key={plan.plan_id} className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm p-6 border border-zinc-200 dark:border-zinc-800 flex flex-row justify-between items-center transition-all hover:border-zinc-300 dark:border-zinc-700 gap-4">
                   <div className="flex-1 pr-2">
                     <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{plan.plan_name}</h3>
@@ -372,12 +401,12 @@ export default function ManageWorkoutsPage() {
           </>
         ) : (
           <>
-            {exercises.length === 0 ? (
+            {filteredExercises.length === 0 ? (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-12 text-center">
-                <p className="text-zinc-500 text-lg">No exercises found. Add some custom moves!</p>
+                <p className="text-zinc-500 text-lg">{q ? `No exercises matching "${searchQuery}"` : 'No exercises found. Add some custom moves!'}</p>
               </div>
             ) : (
-              exercises.map((exercise) => {
+              filteredExercises.map((exercise) => {
                 const exId = exercise.ExMoveID || exercise.ex_move_id;
                 const exName = exercise.Description || exercise.name;
                 const exMuscle = exercise.muscle_group || "";

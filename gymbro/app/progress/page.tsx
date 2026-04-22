@@ -177,36 +177,36 @@ export default function ProgressPage() {
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">Your Progress</h1>
           <p className="text-zinc-500 dark:text-zinc-400">Track and share your personal records.</p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex items-center justify-between min-w-[200px] gap-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2">
-            <button 
-              onClick={handlePrevMonth} 
-              className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors"
-              aria-label="Previous Month"
-            >
-              <ChevronLeft className="w-5 h-5"/>
-            </button>
-            <span className="text-sm font-medium text-zinc-900 dark:text-white whitespace-nowrap">
-              {months[selectedMonth]} {selectedYear}
-            </span>
-            <button 
-              onClick={handleNextMonth} 
-              disabled={isNextMonthDisabled}
-              className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Next Month"
-            >
-              <ChevronRight className="w-5 h-5"/>
-            </button>
-          </div>
-          <ShareButton />
-        </div>
+        <ShareButton />
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <History className="text-pink-500" />
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Latest Record</h2>
+        <div className="order-2 md:order-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <History className="text-pink-500" />
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Latest Record</h2>
+            </div>
+            <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl p-1">
+              <button
+                onClick={handlePrevMonth}
+                className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-colors"
+                aria-label="Previous Month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-xs font-medium text-zinc-900 dark:text-white whitespace-nowrap w-24 text-center inline-block">
+                {months[selectedMonth]} {selectedYear}
+              </span>
+              <button
+                onClick={handleNextMonth}
+                disabled={isNextMonthDisabled}
+                className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="Next Month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="space-y-4">
             {loading ? (
@@ -243,7 +243,7 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 h-fit h-[350px] flex flex-col">
+        <div className="order-1 md:order-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 h-fit h-[350px] flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <TrendingUp className="text-pink-500" />

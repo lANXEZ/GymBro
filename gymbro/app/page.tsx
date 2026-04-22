@@ -8,7 +8,7 @@ import WorkoutCoordinator from './component/WorkoutCoordinator';
 import { useAuth } from './context/AuthContext';
 import { useRouter } from 'next/navigation';
 
-import { loginApi, registerApi, fetchWorkout, fetchRecentPlanId, fetchWorkoutPlans, changePasswordApi, checkUsernameApi } from './lib/apiClient';
+import { loginApi, registerApi, fetchWorkout, fetchRecentPlanId, fetchWorkoutPlans, changePasswordApi, checkUsernameApi, fetchTodayCompleted } from './lib/apiClient';
 
 function PasswordInput({
   value,
@@ -109,6 +109,7 @@ export default function Home() {
   // Today's Plan States
   const [todaysPlanName, setTodaysPlanName] = useState<string | null>(null);
   const [todaysExercises, setTodaysExercises] = useState<any[]>([]);
+  const [todayCompletedIds, setTodayCompletedIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (isLoggedIn && token) {
@@ -224,6 +225,7 @@ export default function Home() {
       };
       
       fetchPlan();
+      fetchTodayCompleted(token).then(setTodayCompletedIds).catch(() => {});
     }
   }, [isLoggedIn, token]);
 
@@ -606,25 +608,47 @@ export default function Home() {
           <div className="bg-zinc-100/50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-zinc-700/50 flex-grow">
             {todaysPlanName ? (
               <>
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{todaysPlanName}</h3>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {todaysExercises.length > 0 
-                        ? `${todaysExercises.length} exercises scheduled for today` 
-                        : 'Rest Day! Enjoy your recovery.'}
-                    </p>
-                  </div>
-                </div>
+                {(() => {
+                  const allDone = todaysExercises.length > 0 && todaysExercises.every(ex => todayCompletedIds.includes(ex.ex_move_id));
+                  const doneCount = todaysExercises.filter(ex => todayCompletedIds.includes(ex.ex_move_id)).length;
+                  return (
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{todaysPlanName}</h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {todaysExercises.length === 0
+                            ? 'Rest Day! Enjoy your recovery.'
+                            : allDone
+                            ? '✅ All done for today!'
+                            : doneCount > 0
+                            ? `${doneCount}/${todaysExercises.length} exercises done`
+                            : `${todaysExercises.length} exercises scheduled for today`}
+                        </p>
+                      </div>
+                      {allDone && (
+                        <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded-full font-semibold">Done</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {todaysExercises.length > 0 && (
                   <ul className="space-y-3 mb-6">
-                    {todaysExercises.map((ex, i) => (
-                      <li key={i} className="flex justify-between items-center text-sm">
-                        <span className="text-zinc-700 dark:text-zinc-200">{ex.name}</span>
-                        {/* If DB doesn't have sets/reps in the plan, you can just show a placeholder */}
-                        <span className="text-zinc-500">Scheduled 🏋️</span>
-                      </li>
-                    ))}
+                    {todaysExercises.map((ex, i) => {
+                      const done = todayCompletedIds.includes(ex.ex_move_id);
+                      return (
+                        <li key={i} className="flex justify-between items-center text-sm">
+                          <span className={done ? 'line-through text-zinc-400 dark:text-zinc-500' : 'text-zinc-700 dark:text-zinc-200'}>
+                            {ex.name}
+                          </span>
+                          {done
+                            ? <span className="text-emerald-500 text-xs font-semibold">Done ✓</span>
+                            : (ex as any).suggest_set_amount
+                            ? <span className="text-zinc-400/50 dark:text-zinc-600/60 text-xs italic">{(ex as any).suggest_set_amount} sets</span>
+                            : <span className="text-zinc-500 text-xs">Scheduled 🏋️</span>
+                          }
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </>

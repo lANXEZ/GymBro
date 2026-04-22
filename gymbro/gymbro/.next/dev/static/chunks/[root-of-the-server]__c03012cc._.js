@@ -368,6 +368,8 @@ __turbopack_context__.s([
     ()=>fetchPerformanceGraph,
     "fetchRecentPlanId",
     ()=>fetchRecentPlanId,
+    "fetchTodayCompleted",
+    ()=>fetchTodayCompleted,
     "fetchUserProfile",
     ()=>fetchUserProfile,
     "fetchWorkout",
@@ -448,6 +450,15 @@ async function sendExerciseApi(token, exMoveId, receiver_id, receiver_username) 
         const err = await res.json().catch(()=>({}));
         throw new Error(err.error || 'Failed to send exercise');
     }
+    return res.json();
+}
+async function fetchTodayCompleted(token) {
+    const res = await fetch(`${API_BASE_URL}/api/workout/today-completed`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+    if (!res.ok) return [];
     return res.json();
 }
 async function checkOverloadableApi(token, ex_move_id) {

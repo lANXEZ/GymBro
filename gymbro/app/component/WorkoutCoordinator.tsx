@@ -555,16 +555,20 @@ const ActiveWorkoutView = ({ exercise, token, bodyStats, onBack, onFinish }: any
           setDetails(data);
         }
 
-        // 2. Check struggle status
-        const struggleRes = await fetch(`${API_BASE_URL}/api/workout/is-struggle?workout_type=${encodeURIComponent(exercise.name)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // 2. Check struggle status (400 = insufficient data — treat silently as not struggling)
         let struggling = false;
-        if (struggleRes.ok) {
-          const struggleData = await struggleRes.json();
-          struggling = !!struggleData.struggling;
-          setIsStruggling(struggling);
-          if (struggling) setShowStruggleAlert(true);
+        try {
+          const struggleRes = await fetch(`${API_BASE_URL}/api/workout/is-struggle?workout_type=${encodeURIComponent(exercise.name)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (struggleRes.ok) {
+            const struggleData = await struggleRes.json();
+            struggling = !!struggleData.struggling;
+            setIsStruggling(struggling);
+            if (struggling) setShowStruggleAlert(true);
+          }
+        } catch (e) {
+          // network error — silently skip
         }
 
         // 2b. If not struggling, check progressive overload

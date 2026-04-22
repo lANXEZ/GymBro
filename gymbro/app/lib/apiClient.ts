@@ -48,6 +48,14 @@ export async function sendExerciseApi(token: string, exMoveId: number, receiver_
   return res.json();
 }
 
+export async function fetchTodayCompleted(token: string): Promise<number[]> {
+  const res = await fetch(`${API_BASE_URL}/api/workout/today-completed`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function checkOverloadableApi(token: string, ex_move_id: number): Promise<{ overloadable: boolean; progress_type?: string; reason?: string }> {
   const res = await fetch(`${API_BASE_URL}/api/workout/is-overloadable?ex_move_id=${ex_move_id}`, {
     headers: { Authorization: `Bearer ${token}` }
