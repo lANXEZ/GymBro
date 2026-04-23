@@ -799,7 +799,7 @@ export default function WorkoutsPage() {
                 <label className="text-sm font-medium text-zinc-400">Goal</label>
                 <select value={autoGenForm.goal} onChange={e => setAutoGenForm({...autoGenForm, goal: e.target.value})} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 mt-1 text-white">
                   <option>Build Muscle</option>
-                  <option>Lose Weight</option>
+                  <option>Lose Fat</option>
                   <option>Increase Endurance</option>
                   <option>Maintain Health</option>
                 </select>
