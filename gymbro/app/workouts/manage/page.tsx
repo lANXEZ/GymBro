@@ -157,7 +157,7 @@ export default function ManageWorkoutsPage() {
     setSendExError('');
     setSendExSuccess('');
     try {
-      await sendExerciseApi(token, exerciseToSend, sendExReceiverId, sendExReceiverUsername);
+      await sendExerciseApi(token, Number(exerciseToSend), Number(sendExReceiverId), sendExReceiverUsername);
       setSendExSuccess('Exercise sent successfully!');
       setTimeout(() => {
         setIsSendExModalOpen(false);
