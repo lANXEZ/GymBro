@@ -12,7 +12,14 @@ if (typeof window !== 'undefined' && !(window as any).__gbFetchPatched) {
   (window as any).__gbFetchPatched = true;
   const origFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const res = await origFetch(input as any, init);
+    let res: Response;
+    try {
+      res = await origFetch(input as any, init);
+    } catch (networkErr) {
+      // Network failure (server down, DNS, CORS preflight blocked, etc.)
+      window.dispatchEvent(new CustomEvent('db:unavailable'));
+      throw networkErr;
+    }
     if (res.status === 401) {
       const headers: any = init?.headers || {};
       const hasAuth = headers?.Authorization
@@ -21,6 +28,17 @@ if (typeof window !== 'undefined' && !(window as any).__gbFetchPatched) {
       if (hasAuth) {
         window.dispatchEvent(new CustomEvent('auth:expired'));
       }
+    }
+    if (res.status === 503) {
+      // Try to detect the DB_UNAVAILABLE marker without consuming the body
+      // (clone so downstream callers can still read it).
+      try {
+        const clone = res.clone();
+        const body = await clone.json();
+        if (body && body.code === 'DB_UNAVAILABLE') {
+          window.dispatchEvent(new CustomEvent('db:unavailable'));
+        }
+      } catch { /* non-JSON body — ignore */ }
     }
     return res;
   };

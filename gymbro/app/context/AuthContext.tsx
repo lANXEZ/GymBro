@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false);
   
   const [showExpired, setShowExpired] = useState(false);
+  const [showDbDown, setShowDbDown] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -51,8 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const onExpired = () => setShowExpired(true);
+    const onDbDown = () => setShowDbDown(true);
     window.addEventListener('auth:expired', onExpired);
-    return () => window.removeEventListener('auth:expired', onExpired);
+    window.addEventListener('db:unavailable', onDbDown);
+    return () => {
+      window.removeEventListener('auth:expired', onExpired);
+      window.removeEventListener('db:unavailable', onDbDown);
+    };
   }, []);
 
   const handleExpiredConfirm = () => {
@@ -102,6 +108,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-3 font-bold transition-colors"
             >
               Log in again
+            </button>
+          </div>
+        </div>
+      )}
+      {showDbDown && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 w-full max-w-md text-center">
+            <h3 className="text-xl font-bold mb-2 text-zinc-900 dark:text-white">Service temporarily unavailable</h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6">
+              We can&apos;t reach our database right now. This usually means the service is sleeping or there&apos;s a brief network blip. Please try again in a moment.
+            </p>
+            <button
+              onClick={() => setShowDbDown(false)}
+              className="w-full bg-pink-600 hover:bg-pink-500 text-white rounded-xl py-3 font-bold transition-colors"
+            >
+              Dismiss
             </button>
           </div>
         </div>
